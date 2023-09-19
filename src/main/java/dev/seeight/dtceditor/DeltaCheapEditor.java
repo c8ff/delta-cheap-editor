@@ -8,6 +8,7 @@ import dev.seeight.dtceditor.history.IHistoryEntry;
 import dev.seeight.dtceditor.history.impl.DeleteObjects;
 import dev.seeight.dtceditor.history.impl.SelectObjects;
 import dev.seeight.dtceditor.input.Mouse;
+import dev.seeight.dtceditor.mgr.TextureManager;
 import dev.seeight.dtceditor.popup.PopUp;
 import dev.seeight.dtceditor.popup.impl.*;
 import dev.seeight.dtceditor.room.IObjectTexture;
@@ -81,16 +82,20 @@ public class DeltaCheapEditor implements StuffListener {
 
 	private final Queue<Runnable> frameStartTasks = new LinkedTransferQueue<>();
 
+	private final TextureManager textureManager;
+
 	public DeltaCheapEditor(Window window, OpenGLRenderer2 renderer) {
 		this.mouse = new Mouse();
 		this.dirty = true;
 		this.window = window;
 		this.renderer = renderer;
+		this.textureManager = new TextureManager();
+
 		try {
-			this.objectTextureProvider = new ObjectTextureProvider();
-			this.font = IOUtil.fontFromPath(renderer, gson, this, "/fonts/inter18/");
-			this.fontBold = IOUtil.fontFromPath(renderer, gson, this, "/fonts/interBold24/");
-			this.gridRenderer = new GridRenderer(renderer, "/");
+			this.objectTextureProvider = new ObjectTextureProvider(this.textureManager);
+			this.font = IOUtil.fontFromPath(renderer, gson, this, "/fonts/inter18/", this.textureManager);
+			this.fontBold = IOUtil.fontFromPath(renderer, gson, this, "/fonts/interBold24/", this.textureManager);
+			this.gridRenderer = new GridRenderer(renderer, "/", this.textureManager);
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
@@ -98,15 +103,11 @@ public class DeltaCheapEditor implements StuffListener {
 		this.room = new Room(640, 480, new ArrayList<>(), new ArrayList<>());
 
 		this.tools = new ArrayList<>();
-		try {
-			this.tools.add(new AddObjectTool(this, this.room, IOUtil.textureFromPath(this, "/icons/addObject.png")));
-			this.tools.add(new SelectTool(this, this.room, IOUtil.textureFromPath(this, "/icons/select.png")));
-			this.tools.add(new MoveCamera(this, this.room, IOUtil.textureFromPath(this, "/icons/move.png")));
-			this.tools.add(new ResizeObjectsTool(this, this.room, IOUtil.textureFromPath(this, "/icons/resizeObjects.png")));
-			this.selectedTool = this.tools.get(0);
-		} catch (IOException e) {
-			throw new RuntimeException(e);
-		}
+		this.tools.add(new AddObjectTool(this, this.room, this.textureManager.get("/icons/addObject.png")));
+		this.tools.add(new SelectTool(this, this.room, this.textureManager.get("/icons/select.png")));
+		this.tools.add(new MoveCamera(this, this.room, this.textureManager.get("/icons/move.png")));
+		this.tools.add(new ResizeObjectsTool(this, this.room, this.textureManager.get("/icons/resizeObjects.png")));
+		this.selectedTool = this.tools.get(0);
 
 		window.setDropCallback(new GLFWDropCallback() {
 			@Override
@@ -538,6 +539,10 @@ public class DeltaCheapEditor implements StuffListener {
 		return this.window;
 	}
 
+	public TextureManager getTextureManager() {
+		return textureManager;
+	}
+
 	public int getGridSize() {
 		return gridSize;
 	}
@@ -561,12 +566,12 @@ public class DeltaCheapEditor implements StuffListener {
 		private final Texture playerTexture;
 		private final Texture doorExit;
 
-		public ObjectTextureProvider() throws IOException {
-			this.invisibleWall = IOUtil.textureFromPath(this, "/invisible_wall_debug.jpg");
-			this.roomDoor = IOUtil.textureFromPath(this, "/door_debug.jpg");
-			this.textInvisibleWall = IOUtil.textureFromPath(this, "/invisible_wall_debug.jpg");
-			this.playerTexture = IOUtil.textureFromPath(this, "/kris.png");
-			this.doorExit = IOUtil.textureFromPath(this, "/door_exit.png");
+		public ObjectTextureProvider(TextureManager textureManager) throws IOException {
+			this.invisibleWall = textureManager.get("/invisible_wall_debug.jpg");
+			this.roomDoor = textureManager.get("/door_debug.jpg");
+			this.textInvisibleWall = textureManager.get("/invisible_wall_debug.jpg");
+			this.playerTexture = textureManager.get("/kris.png");
+			this.doorExit = textureManager.get("/door_exit.png");
 		}
 
 		@Override
