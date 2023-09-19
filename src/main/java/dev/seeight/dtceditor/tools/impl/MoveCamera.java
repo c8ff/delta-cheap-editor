@@ -3,6 +3,7 @@ package dev.seeight.dtceditor.tools.impl;
 import dev.seeight.dtceditor.DeltaCheapEditor;
 import dev.seeight.dtceditor.Room;
 import dev.seeight.dtceditor.history.IHistoryEntry;
+import dev.seeight.dtceditor.tab.EditorTab;
 import dev.seeight.dtceditor.tools.Tool;
 import dev.seeight.renderer.renderer.Texture;
 
@@ -17,14 +18,14 @@ public class MoveCamera extends Tool {
 	private double tempCameraY;
 	private boolean finished;
 
-	public MoveCamera(DeltaCheapEditor editor, Room room, Texture icon) {
-		super(editor, room);
+	public MoveCamera(EditorTab tab, Texture icon) {
+		super(tab);
 		this.icon = icon;
 	}
 
 	@Override
 	public IHistoryEntry getNext() {
-		return new History(editor, previousCameraX, previousCameraY, endCameraX, endCameraY);
+		return new History(tab, previousCameraX, previousCameraY, endCameraX, endCameraY);
 	}
 
 	@Override
@@ -39,23 +40,22 @@ public class MoveCamera extends Tool {
 
 	@Override
 	public void click(int button, int x, int y) {
-		this.previousCameraX = editor.cameraX;
-		this.previousCameraY = editor.cameraY;
-		this.tempCameraX = editor.snapToGrid(x - editor.cameraX);
-		this.tempCameraY = editor.snapToGrid(y - editor.cameraY);
+		this.previousCameraX = tab.cameraX;
+		this.previousCameraY = tab.cameraY;
+		this.tempCameraX = room.snapToGrid(x - tab.cameraX);
+		this.tempCameraY = room.snapToGrid(y - tab.cameraY);
 	}
 
 	@Override
 	public void drag(int button, int x, int y) {
-		editor.cameraX = editor.snapToGrid((float) (x - tempCameraX));
-		editor.cameraY = editor.snapToGrid((float) (y - tempCameraY));
-		this.editor.dirty = true;
+		tab.cameraX = room.snapToGrid((float) (x - tempCameraX));
+		tab.cameraY = room.snapToGrid((float) (y - tempCameraY));
 	}
 
 	@Override
 	public void lift(int button, int x, int y) {
-		this.endCameraX = editor.cameraX;
-		this.endCameraY = editor.cameraY;
+		this.endCameraX = tab.cameraX;
+		this.endCameraY = tab.cameraY;
 		finished = true;
 	}
 
@@ -75,14 +75,14 @@ public class MoveCamera extends Tool {
 	}
 
 	public static class History implements IHistoryEntry {
-		private final DeltaCheapEditor deltaCheapEditor;
+		private final EditorTab tab;
 		private final float cX;
 		private final float cY;
 		private final float ecX;
 		private final float ecY;
 
-		public History(DeltaCheapEditor deltaCheapEditor, float cX, float cY, float ecX, float ecY) {
-			this.deltaCheapEditor = deltaCheapEditor;
+		public History(EditorTab tab, float cX, float cY, float ecX, float ecY) {
+			this.tab = tab;
 			this.cX = cX;
 			this.cY = cY;
 			this.ecX = ecX;
@@ -91,14 +91,14 @@ public class MoveCamera extends Tool {
 
 		@Override
 		public void undo() {
-			deltaCheapEditor.cameraX = cX;
-			deltaCheapEditor.cameraY = cY;
+			tab.cameraX = cX;
+			tab.cameraY = cY;
 		}
 
 		@Override
 		public void redo() {
-			deltaCheapEditor.cameraX = ecX;
-			deltaCheapEditor.cameraY = ecY;
+			tab.cameraX = ecX;
+			tab.cameraY = ecY;
 		}
 	}
 }

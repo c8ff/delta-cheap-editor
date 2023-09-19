@@ -6,6 +6,7 @@ import dev.seeight.astrakit.components.impl.SkipNewLineComponent;
 import dev.seeight.astrakit.components.impl.TextFieldComponent;
 import dev.seeight.astrakit.components.impl.TitleComponent;
 import dev.seeight.dtceditor.DeltaCheapEditor;
+import dev.seeight.dtceditor.Room;
 import dev.seeight.dtceditor.history.impl.EditInvisibleWallText;
 import dev.seeight.dtceditor.popup.ComponentPopUp;
 import dev.seeight.dtceditor.room.ext.TextInvisibleWall;
@@ -14,10 +15,12 @@ import java.util.ConcurrentModificationException;
 
 public class TextInvisibleWallPopUp extends ComponentPopUp {
 	private final TextInvisibleWall obj;
+	private final Room room;
 
-	public TextInvisibleWallPopUp(DeltaCheapEditor editor, TextInvisibleWall obj) {
+	public TextInvisibleWallPopUp(DeltaCheapEditor editor, TextInvisibleWall obj, Room room) {
 		super(editor);
 		this.obj = obj;
+		this.room = room;
 	}
 
 	@Override
@@ -64,7 +67,7 @@ public class TextInvisibleWallPopUp extends ComponentPopUp {
 				}
 			}
 
-			editor.room.addHistory(new EditInvisibleWallText(obj, strings));
+			room.addHistory(new EditInvisibleWallText(obj, strings));
 			this.setClosing(true);
 		}));
 	}

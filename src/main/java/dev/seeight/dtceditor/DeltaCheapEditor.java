@@ -4,24 +4,13 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import dev.seeight.common.lwjgl.Window;
 import dev.seeight.common.lwjgl.font.FontRenderer;
-import dev.seeight.dtceditor.history.IHistoryEntry;
-import dev.seeight.dtceditor.history.impl.DeleteObjects;
-import dev.seeight.dtceditor.history.impl.SelectObjects;
 import dev.seeight.dtceditor.input.Mouse;
 import dev.seeight.dtceditor.mgr.TextureManager;
 import dev.seeight.dtceditor.popup.PopUp;
-import dev.seeight.dtceditor.popup.impl.*;
+import dev.seeight.dtceditor.popup.impl.LoadRoomPopUp;
 import dev.seeight.dtceditor.room.IObjectTexture;
-import dev.seeight.dtceditor.room.RoomObject;
-import dev.seeight.dtceditor.room.ext.DoorExit;
-import dev.seeight.dtceditor.room.ext.InvisibleWall;
-import dev.seeight.dtceditor.room.ext.RoomDoor;
 import dev.seeight.dtceditor.tab.EditorTab;
-import dev.seeight.dtceditor.tools.Tool;
-import dev.seeight.dtceditor.tools.impl.AddObjectTool;
-import dev.seeight.dtceditor.tools.impl.MoveCamera;
-import dev.seeight.dtceditor.tools.impl.ResizeObjectsTool;
-import dev.seeight.dtceditor.tools.impl.SelectTool;
+import dev.seeight.dtceditor.tab.ITab;
 import dev.seeight.dtceditor.utils.IOUtil;
 import dev.seeight.renderer.renderer.Texture;
 import dev.seeight.renderer.renderer.gl.OpenGLRenderer2;
@@ -39,9 +28,6 @@ public class DeltaCheapEditor implements StuffListener {
 	public static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
 	public static final Gson gsonRaw = new GsonBuilder().create();
 
-	private Tool selectedTool;
-	private final float[] m0 = new float[16];
-
 	private double prevTime;
 	/**
 	 * The time in seconds between the previous frame and the current frame.
@@ -50,12 +36,10 @@ public class DeltaCheapEditor implements StuffListener {
 	private double deltaTime;
 
 	public boolean dirty;
-	public float cameraX;
-	public float cameraY;
-	public float zoom = 1;
+
 	private final Window window;
 	private final OpenGLRenderer2 renderer;
-	private int gridSize = 20;
+
 	private final GridRenderer gridRenderer;
 
 	public final FontRenderer font;
@@ -66,23 +50,18 @@ public class DeltaCheapEditor implements StuffListener {
 
 	public final Mouse mouse;
 
-	private EditorTab tab;
-
-	private final List<Tool> tools;
-
-	private boolean renderGrid = true;
-
 	public boolean ctrl;
 	public boolean shift;
-	private boolean ignoreClick;
 
 	private final ObjectTextureProvider objectTextureProvider;
 
-	public Room room;
 
 	private final Queue<Runnable> frameStartTasks = new LinkedTransferQueue<>();
 
 	private final TextureManager textureManager;
+
+	private final List<ITab> tabs;
+	private ITab tab;
 
 	public DeltaCheapEditor(Window window, OpenGLRenderer2 renderer) {
 		this.mouse = new Mouse();
@@ -90,6 +69,9 @@ public class DeltaCheapEditor implements StuffListener {
 		this.window = window;
 		this.renderer = renderer;
 		this.textureManager = new TextureManager();
+		this.tabs = new ArrayList<>();
+		this.tabs.add(new EditorTab(this, new Room(640, 480, new ArrayList<>(), new ArrayList<>())));
+		this.setTab(this.tabs.get(this.tabs.size() - 1));
 
 		try {
 			this.objectTextureProvider = new ObjectTextureProvider(this.textureManager);
@@ -100,14 +82,6 @@ public class DeltaCheapEditor implements StuffListener {
 			throw new RuntimeException(e);
 		}
 		this.popUp = null;
-		this.room = new Room(640, 480, new ArrayList<>(), new ArrayList<>());
-
-		this.tools = new ArrayList<>();
-		this.tools.add(new AddObjectTool(this, this.room, this.textureManager.get("/icons/addObject.png")));
-		this.tools.add(new SelectTool(this, this.room, this.textureManager.get("/icons/select.png")));
-		this.tools.add(new MoveCamera(this, this.room, this.textureManager.get("/icons/move.png")));
-		this.tools.add(new ResizeObjectsTool(this, this.room, this.textureManager.get("/icons/resizeObjects.png")));
-		this.selectedTool = this.tools.get(0);
 
 		window.setDropCallback(new GLFWDropCallback() {
 			@Override
@@ -117,13 +91,13 @@ public class DeltaCheapEditor implements StuffListener {
 					if (DeltaCheapEditor.this.popUp instanceof LoadRoomPopUp p) {
 						p.setSelectedFile(name);
 					} else {
-						DeltaCheapEditor.this.setPopUp(new LoadRoomPopUp(DeltaCheapEditor.this, name));
+						if (tab instanceof EditorTab t) {
+							DeltaCheapEditor.this.setPopUp(new LoadRoomPopUp(DeltaCheapEditor.this, name, t.room));
+						}
 					}
 				}
 			}
 		});
-
-		tab = new EditorTab(this, this.room);
 	}
 
 	@Override
@@ -133,15 +107,32 @@ public class DeltaCheapEditor implements StuffListener {
 
 	@Override
 	public void framebufferSize(int width, int height) {
-		tab.framebufferSize(width, height);
+		if (tab != null) tab.framebufferSize(width, height);
 	}
 
 	@Override
 	public void mouseButton(int button, int action) {
 		this.mouse.mouseButton(button, action);
 
-		if (ignoreClick && button == GLFW.GLFW_MOUSE_BUTTON_1 && action == GLFW.GLFW_RELEASE) {
-			ignoreClick = false;
+		if (clickedTabBounds(mouse.getXi(), mouse.getYi())) {
+			int i = clickedTab(mouse.getXi(), mouse.getYi());
+
+			if (i < 0) return; // Selected nothing
+
+			if (action == GLFW.GLFW_PRESS) {
+				if (button == GLFW.GLFW_MOUSE_BUTTON_1) {
+					this.setTab(this.tabs.get(i));
+				} else if (button == GLFW.GLFW_MOUSE_BUTTON_3) {
+					int c = this.tabs.indexOf(tab);
+					this.tabs.remove(i); // TODO: Ask the user before deleting all progress lol
+					if (tabs.isEmpty()) {
+						this.setTab(null);
+					} else if (c == i) {
+						this.setTab(this.tabs.get(tabs.size() - 1));
+					}
+				}
+			}
+
 			return;
 		}
 
@@ -161,30 +152,7 @@ public class DeltaCheapEditor implements StuffListener {
 			return;
 		}
 
-		for (Tool tool : tools) {
-			if (tool.contains(mouse.getX(), mouse.getY())) {
-				if (button == GLFW.GLFW_MOUSE_BUTTON_1 && action == GLFW.GLFW_PRESS) {
-					this.selectedTool = tool;
-				} else if (button == GLFW.GLFW_MOUSE_BUTTON_2 && action == GLFW.GLFW_PRESS) {
-					PopUp pop = this.selectedTool.getOptionsPopUp();
-					if (pop != null) {
-						this.setPopUp(pop);
-					}
-				}
-				ignoreClick = action != GLFW.GLFW_RELEASE;
-				return;
-			}
-		}
-
-		if (button == GLFW.GLFW_MOUSE_BUTTON_1) {
-			boolean down = action != GLFW.GLFW_RELEASE;
-
-			if (down) {
-				this.selectedTool.click(0, mouse.getXi(), mouse.getYi());
-			} else {
-				this.selectedTool.lift(0, mouse.getXi(), mouse.getYi());
-			}
-		}
+		if (this.tab != null) this.tab.mouseButton(button, action);
 	}
 
 	@Override
@@ -196,9 +164,7 @@ public class DeltaCheapEditor implements StuffListener {
 			return;
 		}
 
-		if (this.mouse.button1.isDown() && !this.ignoreClick) {
-			this.selectedTool.drag(0, mouse.getXi(), mouse.getYi());
-		}
+		if (this.tab != null) this.tab.cursorPosition(x, y);
 	}
 
 	@Override
@@ -234,69 +200,7 @@ public class DeltaCheapEditor implements StuffListener {
 			shift = action != GLFW.GLFW_RELEASE;
 		}
 
-		if (action != GLFW.GLFW_PRESS) {
-			return;
-		}
-
-		switch (key) {
-			case GLFW.GLFW_KEY_R -> {
-				this.cameraX = 0;
-				this.cameraY = 0;
-				this.zoom = 1;
-				this.room.clearHistory();
-			}
-			case GLFW.GLFW_KEY_S -> {
-				if ((mods & GLFW.GLFW_MOD_CONTROL) == 0) {
-					break;
-				}
-
-				SaveRoomPopUp.promptSave(this, mods);
-			}
-			case GLFW.GLFW_KEY_A -> {
-				if ((mods & GLFW.GLFW_MOD_CONTROL) != 0) {
-					this.room.addHistory(new SelectObjects(this.room, this.room.collectSelectedObjects(roomObject -> roomObject.selected = true), true));
-				}
-			}
-			case GLFW.GLFW_KEY_DELETE -> {
-				if (this.room.getSelectedCount() == 0) {
-					return;
-				}
-
-				List<RoomObject> objects1 = new ArrayList<>();
-				for (RoomObject object : this.room.getObjects()) {
-					if (object.selected) {
-						objects1.add(object);
-					}
-				}
-
-				this.room.removeObjects(objects1);
-				this.room.addHistory(new DeleteObjects(this.room.getObjects(), objects1));
-			}
-			case GLFW.GLFW_KEY_Z -> {
-				if ((mods & GLFW.GLFW_MOD_CONTROL) != 0) {
-					this.room.historyUndo();
-				}
-			}
-			case GLFW.GLFW_KEY_Y -> {
-				if ((mods & GLFW.GLFW_MOD_CONTROL) != 0) {
-					this.room.historyRedo();
-				}
-			}
-			case GLFW.GLFW_KEY_V -> this.setPopUp(new GridSizePopUp(this));
-			case GLFW.GLFW_KEY_B -> this.setPopUp(new RoomDetails(this, room));
-			case GLFW.GLFW_KEY_N -> this.setPopUp(new LoadRoomPopUp(this));
-			case GLFW.GLFW_KEY_U -> this.setPopUp(new ConsolePopUp(this));
-			case GLFW.GLFW_KEY_D -> {
-				this.renderGrid = !this.renderGrid;
-				this.dirty = true;
-			}
-			case GLFW.GLFW_KEY_1 -> this.gridSize = 5;
-			case GLFW.GLFW_KEY_2 -> this.gridSize = 10;
-			case GLFW.GLFW_KEY_3 -> this.gridSize = 20;
-			case GLFW.GLFW_KEY_4 -> this.gridSize = 30;
-			case GLFW.GLFW_KEY_5 -> this.gridSize = 40;
-			case GLFW.GLFW_KEY_6 -> this.gridSize = 50;
-		}
+		if (this.tab != null) this.tab.key(key, action, mods);
 	}
 
 	@Override
@@ -308,22 +212,7 @@ public class DeltaCheapEditor implements StuffListener {
 			return;
 		}
 
-		if (this.ctrl) {
-			this.zoom += Math.ceil(Math.floor(y) * 10) / 10 / 4F;
-			if (this.zoom <= 0) {
-				this.zoom = 0;
-			}
-			return;
-		} else {
-			// TODO: Implement 'x' scroll too (for laptops lol)
-			if (this.shift) {
-				this.cameraX += this.gridSize * (y > 0 ? 1 : -1);
-			} else {
-				this.cameraY += this.gridSize * (y > 0 ? 1 : -1);
-			}
-		}
-
-		this.selectedTool.scroll(x, y);
+		if (this.tab != null) this.tab.scroll(x, y);
 	}
 
 	@Override
@@ -356,12 +245,7 @@ public class DeltaCheapEditor implements StuffListener {
 	}
 
 	public void render() {
-		if (selectedTool.isActionFinished()) {
-			IHistoryEntry next = selectedTool.getNext();
-			if (next != null) {
-				this.room.addHistory(next);
-			}
-		}
+		if (this.tab != null) tab.prerender();
 
 		if (!this.dirty) {
 			return;
@@ -380,22 +264,17 @@ public class DeltaCheapEditor implements StuffListener {
 
 		renderer.frameStart();
 
-		renderer.getViewMatrix4f(m0);
-		renderer.scale(zoom, zoom, 1);
-		renderer.translate(cameraX, cameraY, 0);
-
 		try {
-			renderBackground();
-			renderObjects();
-			renderGrid();
+			if (this.tab != null) {
+				tab.render();
+			} else {
+				renderer.color(1, 1, 1, 1);
+				fontBold.drawString("No tabs open.", 20, 20);
+				font.drawString("I don't know how you got here.", 20, 20 + fontBold.FONT_HEIGHT_FLOAT + 4);
+			}
 
-			selectedTool.render();
+			renderTabs();
 
-			renderer.setViewMatrix4f(m0);
-
-			tab.render();
-
-			renderToolIcons();
 			renderPopUp();
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -422,43 +301,70 @@ public class DeltaCheapEditor implements StuffListener {
 		this.prevTime = time;
 	}
 
-	protected void renderBackground() {
-		if (this.room.getBackgroundTexture() == null) {
-			renderer.color(0.25F, 0.25F, 0.25F, 1);
-			renderer.rect2d(0, 0, this.room.getWidth(), this.room.getHeight());
-		} else {
-			renderer.color(1, 1, 1, 1);
-			renderer.texRect2d(this.room.getBackgroundTexture(), 0, 0, this.room.getWidth(), this.room.getHeight());
-		}
+	protected void renderTabs() {
+		float width = window.getWidth();
+		float height = 40;
+		float x = 0;
+		float y = window.getHeight() - height;
+		float tabWidth = 200;
+		float tabHeight = 35;
 
-		if (!this.room.getLayers().isEmpty()) {
-			renderer.color(1, 1, 1, 1);
-			for (Layer layer : this.room.getLayers()) {
-				if (layer.texture == null || layer.texture.isDeleted()) continue;
-				renderer.texRect2d(layer.texture, 0, 0, this.room.getWidth(), this.room.getHeight());
-			}
-		}
-	}
-
-	protected void renderGrid() {
-		if (!renderGrid) return;
-		renderer.color(1, 1, 1, 0.25F); // TODO: Make grid opacity custom
-		gridRenderer.render(0, 0, this.room.getWidth(), this.room.getHeight(), cameraX, cameraY, zoom, window.getHeight(), gridSize);
-	}
-
-	protected void renderObjects() {
 		renderer.color(1, 1, 1, 0.25F);
-		for (RoomObject object : this.room.getObjects()) {
-			float a = object instanceof InvisibleWall ? 0.3F : (object instanceof DoorExit || object instanceof RoomDoor ? 0.6F : 1F);
+		renderer.rect2d(x, y, x + width, y + height);
 
-			if (object.selected) {
-				renderer.color(1, 0.25F, 0.25F, a);
+		x += 6;
+
+		for (ITab iTab : tabs) {
+			float tx = x;
+			float ty = y + height - tabHeight;
+
+			if (iTab == tab) {
+				renderer.color(1, 1, 1, 1);
 			} else {
-				renderer.color(1, 1, 1, a);
+				renderer.color(1, 1, 1, 0.50F);
+			}
+			renderer.rect2d(tx, ty, tx + tabWidth, ty + tabHeight);
+
+			renderer.color(0, 0, 0, 1);
+			if (iTab instanceof EditorTab t) {
+				font.drawString(t.title, tx + 2, ty + 2);
+			} else {
+				font.drawString(iTab.getClass().getSimpleName(), tx + 2, ty + 2);
+			}
+			x += tabWidth + 6;
+		}
+	}
+
+	protected boolean clickedTabBounds(int mx, int my) {
+		float width = window.getWidth();
+		float height = 40;
+		float x = 0;
+		float y = window.getHeight() - height;
+
+		return x < mx && y < my && x + width > mx && y + height > my;
+	}
+
+	protected int clickedTab(int mx, int my) {
+		float height = 40;
+		float x = 0;
+		float y = window.getHeight() - height;
+		float tabWidth = 200;
+		float tabHeight = 35;
+
+		x += 6;
+
+		for (int i = 0; i < tabs.size(); i++) {
+			float tx = x;
+			float ty = y + height - tabHeight;
+
+			if (tx < mx && ty < my && tx + tabWidth > mx && ty + tabHeight > my) {
+				return i;
 			}
 
-			renderer.texRect2d(object.getTexture(this.objectTextureProvider), object.x + object.renderOffsetX, object.y + object.renderOffsetY, object.x + object.renderOffsetX + object.getWidth(), object.y + object.renderOffsetY + object.getHeight());
+			x += tabWidth + 6;
 		}
+
+		return -1;
 	}
 
 	protected void renderPopUp() {
@@ -471,56 +377,12 @@ public class DeltaCheapEditor implements StuffListener {
 		}
 	}
 
-	protected void renderToolIcons() {
-		float x = 10;
-		float y = 10;
-		int iconSize = 32;
-		int margin = 4;
-
-		// background
-		renderer.color(0, 0, 0, 0.75F);
-		renderer.rect2d(x + margin, y + margin, x + margin * 2 + iconSize, y + margin * 2 + iconSize * this.tools.size());
-
-		// tools
-		renderer.color(0.5F, 0.5F, 0.5F, 1);
-		for (Tool tool : this.tools) {
-			tool.renderX = x;
-			tool.renderY = y;
-			tool.renderX2 = x + 32 + margin * 2;
-			tool.renderY2 = y + 32 + margin * 2;
-
-			if (this.selectedTool == tool) {
-				renderer.color(1, 1, 1, 1);
-			}
-
-			renderer.texRect2d(tool.getIcon(), x + margin, y + margin, x + margin + 32, y + margin + 32);
-
-			if (this.selectedTool == tool) {
-				renderer.color(0.5F, 0.5F, 0.5F, 1);
-			}
-
-			y += 32;
-		}
-	}
-
-
-
 	public void shutdown() {
 		try {
 			Server.shutdownServerThread();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-	}
-
-	public int snapToGrid(float input) {
-		double mod = input % gridSize;
-		int a = (int) (input / gridSize) * gridSize;
-		if (mod > gridSize / 2d) {
-			return a + gridSize;
-		}
-
-		return a;
 	}
 
 	public void setPopUp(PopUp popUp) {
@@ -543,12 +405,12 @@ public class DeltaCheapEditor implements StuffListener {
 		return textureManager;
 	}
 
-	public int getGridSize() {
-		return gridSize;
+	public GridRenderer getGridRenderer() {
+		return gridRenderer;
 	}
 
-	public void setGridSize(int size) {
-		this.gridSize = size;
+	public ObjectTextureProvider getObjectTextureProvider() {
+		return objectTextureProvider;
 	}
 
 	public void queueLoadBackground(Room room, String backgroundPath) {
@@ -557,6 +419,26 @@ public class DeltaCheapEditor implements StuffListener {
 
 	public void queueLoadLayerTextures(Room room) {
 		this.frameStartTasks.add(room::loadLayerTextures);
+	}
+
+	private void setTab(ITab tab) {
+		this.tab = tab;
+		if (tab != null) {
+			if (tab instanceof EditorTab t) {
+				window.setTitle("Editor | DEV BUILD | " + t.title);
+			} else {
+				window.setTitle("Editor | DEV BUILD | " + tab.getClass().getSimpleName());
+			}
+		} else {
+			window.setTitle("Editor | DEV BUILD");
+		}
+	}
+
+	public void addTab(ITab tab) {
+		this.tabs.add(tab);
+		if (this.tab == null) {
+			this.tab = tabs.get(0);
+		}
 	}
 
 	private static class ObjectTextureProvider implements IObjectTexture {

@@ -1,6 +1,7 @@
 package dev.seeight.dtceditor.popup.impl;
 
 import dev.seeight.dtceditor.DeltaCheapEditor;
+import dev.seeight.dtceditor.Room;
 import dev.seeight.dtceditor.popup.PopUp;
 import org.lwjgl.glfw.GLFW;
 
@@ -9,8 +10,11 @@ public class GridSizePopUp extends PopUp {
 			5, 10, 20, 30, 40, 50
 	};
 
-	public GridSizePopUp(DeltaCheapEditor editor) {
+	private final Room room;
+
+	public GridSizePopUp(DeltaCheapEditor editor, Room room1) {
 		super(editor, 300, 300);
+		this.room = room1;
 	}
 
 	@Override
@@ -31,14 +35,15 @@ public class GridSizePopUp extends PopUp {
 		y += this.editor.font.FONT_HEIGHT_FLOAT;
 
 		this.renderer.color(0.8F, 0.8F, 0.8F, a);
+		int sc = room.getGridSize();
 		for (int size : sizes) {
-			if (this.editor.getGridSize() == size) {
+			if (sc == size) {
 				this.renderer.color(0.25F, 0.75F, 1, a);
 			}
 
 			this.editor.font.drawString(String.valueOf(size), x, y);
 
-			if (this.editor.getGridSize() == size) {
+			if (sc == size) {
 				this.renderer.color(0.8F, 0.8F, 0.8F, a);
 			}
 
@@ -59,7 +64,7 @@ public class GridSizePopUp extends PopUp {
 		float height = this.editor.font.FONT_HEIGHT_FLOAT;
 		for (int size : sizes) {
 			if (mx > x && my > y && mx < x + getWidth() && my < y + height) {
-				this.editor.setGridSize(size);
+				this.room.setGridSize(size);
 				break;
 			}
 			y += height;

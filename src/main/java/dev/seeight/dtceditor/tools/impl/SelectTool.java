@@ -1,10 +1,9 @@
 package dev.seeight.dtceditor.tools.impl;
 
-import dev.seeight.dtceditor.DeltaCheapEditor;
-import dev.seeight.dtceditor.Room;
 import dev.seeight.dtceditor.history.IHistoryEntry;
 import dev.seeight.dtceditor.history.impl.SelectObjects;
 import dev.seeight.dtceditor.room.RoomObject;
+import dev.seeight.dtceditor.tab.EditorTab;
 import dev.seeight.dtceditor.tools.Tool;
 import dev.seeight.renderer.renderer.Texture;
 import org.jetbrains.annotations.Contract;
@@ -33,23 +32,23 @@ public class SelectTool extends Tool {
 	private double lastTime;
 
 	@Contract(pure = true)
-	public SelectTool(@NotNull DeltaCheapEditor editor, Room room, Texture icon) {
-		super(editor, room);
+	public SelectTool(EditorTab tab, Texture icon) {
+		super(tab);
 		this.icon = icon;
 	}
 
 	@Override
 	public void render() {
 		if (click && selObject == null && !clearAll) {
-			this.editor.getRenderer().color(0.25F, 0.75F, 1, 0.25F);
-			this.editor.getRenderer().rect2d(Math.min(x, x2), Math.min(y, y2), Math.max(x, x2), Math.max(y, y2));
+			this.renderer.color(0.25F, 0.75F, 1, 0.25F);
+			this.renderer.rect2d(Math.min(x, x2), Math.min(y, y2), Math.max(x, x2), Math.max(y, y2));
 		}
 	}
 
 	@Override
 	public void click(int button, int x, int y) {
-		x = translateX(editor, x);
-		y = translateY(editor, y);
+		x = translateX(x);
+		y = translateY(y);
 
 		RoomObject object = this.getObjectAt(x, y);
 
@@ -57,7 +56,7 @@ public class SelectTool extends Tool {
 		if (object != null) {
 			double time = (GLFW.glfwGetTime() - this.lastTime);
 			if (time < 0.225F) {
-				this.editor.setPopUp(object.getOptionsPopUp(this.editor));
+				this.tab.editor.setPopUp(object.getOptionsPopUp(this.tab.editor, room));
 				this.lastTime = GLFW.glfwGetTime();
 				this.selObject = object;
 				this.finished = true;
@@ -73,7 +72,7 @@ public class SelectTool extends Tool {
 			this.x2 = x;
 			this.y2 = y;
 			this.selObject = null;
-		} else if (this.room.getSelectedCount() > 0 && !this.editor.ctrl) {
+		} else if (this.room.getSelectedCount() > 0 && !this.tab.editor.ctrl) {
 			this.clearAll = true;
 			this.selObject = null;
 			this.finished = true;
@@ -88,8 +87,8 @@ public class SelectTool extends Tool {
 
 	@Override
 	public void drag(int button, int x, int y) {
-		x = translateX(editor, x);
-		y = translateY(editor, y);
+		x = translateX(x);
+		y = translateY(y);
 
 		if (!this.finished) {
 			this.x2 = x;
@@ -139,7 +138,7 @@ public class SelectTool extends Tool {
 
 			boolean a = !selObject.selected;
 
-			if (!this.editor.ctrl) {
+			if (!this.tab.editor.ctrl) {
 				this.room.unselectAllObjects();
 			}
 
@@ -153,7 +152,7 @@ public class SelectTool extends Tool {
 
 		List<RoomObject> selObjects = this.selObjects;
 		this.selObjects = null;
-		if (!this.editor.ctrl) {
+		if (!this.tab.editor.ctrl) {
 			this.room.unselectAllObjects();
 		}
 		return SelectObjects.apply(this.room, selObjects);

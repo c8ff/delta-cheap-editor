@@ -19,14 +19,16 @@ public class SaveRoomPopUp extends ComponentPopUp {
 	private String selectedPath;
 
 	private PopUp popUp;
+	private final Room room;
 
-	public SaveRoomPopUp(DeltaCheapEditor editor) {
-		this(editor, null);
+	public SaveRoomPopUp(DeltaCheapEditor editor, Room room) {
+		this(editor, null, room);
 	}
 
-	public SaveRoomPopUp(DeltaCheapEditor editor, String selectedPath) {
+	public SaveRoomPopUp(DeltaCheapEditor editor, String selectedPath, Room room) {
 		super(editor);
 		this.selectedPath = selectedPath;
+		this.room = room;
 	}
 
 	@Override
@@ -49,9 +51,9 @@ public class SaveRoomPopUp extends ComponentPopUp {
 				return;
 			}
 
-			String json = DeltaCheapEditor.gson.toJson(Room.serialize(this.editor.room));
+			String json = DeltaCheapEditor.gson.toJson(Room.serialize(room));
 			try {
-				editor.room.setPath(selectedPath);
+				room.setPath(selectedPath);
 				Files.writeString(Path.of(selectedPath), json);
 				this.setClosing(true);
 			} catch (IOException x) {
@@ -150,13 +152,13 @@ public class SaveRoomPopUp extends ComponentPopUp {
 		super.character(codepoint);
 	}
 
-	public static void promptSave(DeltaCheapEditor editor, int mods) {
-		if (editor.room.getPath() == null || ((mods & GLFW.GLFW_MOD_SHIFT) != 0)) {
-			editor.setPopUp(new SaveRoomPopUp(editor, editor.room.getPath()));
+	public static void promptSave(DeltaCheapEditor editor, Room room, int mods) {
+		if (room.getPath() == null || ((mods & GLFW.GLFW_MOD_SHIFT) != 0)) {
+			editor.setPopUp(new SaveRoomPopUp(editor, room.getPath(), room));
 		} else {
-			String json = DeltaCheapEditor.gson.toJson(Room.serialize(editor.room));
+			String json = DeltaCheapEditor.gson.toJson(Room.serialize(room));
 			try {
-				Files.writeString(Path.of(editor.room.getPath()), json);
+				Files.writeString(Path.of(room.getPath()), json);
 			} catch (IOException x) {
 				x.printStackTrace();
 			}

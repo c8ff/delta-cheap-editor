@@ -19,9 +19,11 @@ public class ConsolePopUp extends PopUp {
 	private static final List<String> lines = new ArrayList<>();
 	private final TextFieldComponent textFieldComponent;
 	private float typeTimer;
+	private final Room room;
 
-	public ConsolePopUp(DeltaCheapEditor editor) {
+	public ConsolePopUp(DeltaCheapEditor editor, Room room) {
 		super(editor);
+		this.room = room;
 		this.textFieldComponent = new TextFieldComponent("", "");
 	}
 
@@ -131,8 +133,8 @@ public class ConsolePopUp extends PopUp {
 						return;
 					}
 
-					JsonObject object = Room.serialize(editor.room);
-					object.addProperty("tempFilePath", editor.room.getPath() == null ? null : StringUtil.substringToLastIndexOf(editor.room.getPath(), File.separator));
+					JsonObject object = Room.serialize(room);
+					object.addProperty("tempFilePath", room.getPath() == null ? null : StringUtil.substringToLastIndexOf(room.getPath(), File.separator));
 					Server.serverThread.server.sendMessage("setRoom " + DeltaCheapEditor.gsonRaw.toJson(object), "OK");
 				} else {
 					lines.add("Unknown command: '" + input + "'. Type close to close the editor.");

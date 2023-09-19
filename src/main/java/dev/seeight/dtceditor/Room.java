@@ -57,6 +57,8 @@ public class Room {
     private final List<IHistoryEntry> historyEntries;
     private int historyIndex;
 
+    private int gridSize = 10;
+
     /**
      * @param width   The width of the room.
      * @param height  The height of the room.
@@ -129,6 +131,24 @@ public class Room {
         }
 
         return backgroundTexture;
+    }
+
+    public int getGridSize() {
+        return gridSize;
+    }
+
+    public void setGridSize(int gridSize) {
+        this.gridSize = gridSize;
+    }
+
+    public int snapToGrid(float input) {
+        double mod = input % gridSize;
+        int a = (int) (input / gridSize) * gridSize;
+        if (mod > gridSize / 2d) {
+            return a + gridSize;
+        }
+
+        return a;
     }
 
     public String getBackgroundPath() {

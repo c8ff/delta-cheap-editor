@@ -3,6 +3,10 @@ package dev.seeight.dtceditor.tab;
 import dev.seeight.dtceditor.StuffListener;
 
 public interface ITab extends StuffListener {
+    default void prerender() {
+
+    }
+
     default void render() {
 
     }

@@ -1,6 +1,7 @@
 package dev.seeight.dtceditor.room;
 
 import dev.seeight.dtceditor.DeltaCheapEditor;
+import dev.seeight.dtceditor.Room;
 import dev.seeight.dtceditor.popup.PopUp;
 import dev.seeight.dtceditor.popup.impl.EditObjectPopUp;
 import dev.seeight.renderer.renderer.Texture;
@@ -38,7 +39,7 @@ public abstract class RoomObject {
 
 	public abstract Texture getTexture(IObjectTexture prov);
 
-	public PopUp getOptionsPopUp(DeltaCheapEditor editor) {
+	public PopUp getOptionsPopUp(DeltaCheapEditor editor, Room room) {
 		return new EditObjectPopUp(editor, this);
 	}
 }

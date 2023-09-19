@@ -1,11 +1,10 @@
 package dev.seeight.dtceditor.tools.impl;
 
-import dev.seeight.dtceditor.DeltaCheapEditor;
-import dev.seeight.dtceditor.Room;
 import dev.seeight.dtceditor.history.IHistoryEntry;
 import dev.seeight.dtceditor.history.impl.MoveObjects;
 import dev.seeight.dtceditor.history.impl.SelectObjects;
 import dev.seeight.dtceditor.room.RoomObject;
+import dev.seeight.dtceditor.tab.EditorTab;
 import dev.seeight.dtceditor.tools.Tool;
 import dev.seeight.renderer.renderer.Texture;
 
@@ -33,8 +32,8 @@ public class ResizeObjectsTool extends Tool {
 	private final List<RoomObject> selectedObjects;
 	private boolean clearPreviousObjects;
 
-	public ResizeObjectsTool(DeltaCheapEditor editor, Room room, Texture icon) {
-		super(editor, room);
+	public ResizeObjectsTool(EditorTab tab, Texture icon) {
+		super(tab);
 		this.icon = icon;
 		this.positionChanges = new ArrayList<>();
 		this.selectedObjects = new ArrayList<>();
@@ -42,13 +41,13 @@ public class ResizeObjectsTool extends Tool {
 
 	@Override
 	public void render() {
-		this.expandSize = 2 * this.editor.zoom;
+		this.expandSize = 2 * this.tab.zoom;
 		if (!this.click) {
 			this.calcArea();
 		}
 
-		this.editor.getRenderer().color(1, 1, 1, 1);
-		this.editor.getRenderer().hollowRect2d(areaX, areaY, areaX2, areaY2, editor.zoom);
+		this.tab.editor.getRenderer().color(1, 1, 1, 1);
+		this.tab.editor.getRenderer().hollowRect2d(areaX, areaY, areaX2, areaY2, this.tab.zoom);
 		this.renderExpand(areaX, areaY);
 		this.renderExpand(areaX2, areaY);
 		this.renderExpand(areaX, areaY2);
@@ -71,10 +70,10 @@ public class ResizeObjectsTool extends Tool {
 		this.startAreaX2 = this.areaX2;
 		this.startAreaY2 = this.areaY2;
 
-		x = translateX(editor, x);
-		y = translateY(editor, y);
-		clickX = editor.snapToGrid(x);
-		clickY = editor.snapToGrid(y);
+		x = translateX(x);
+		y = translateY(y);
+		clickX = room.snapToGrid(x);
+		clickY = room.snapToGrid(y);
 
 		if (isInsideExpand(areaX + (areaX2 - areaX) / 2, areaY, x, y)) {
 			selectionMode = 5;
@@ -110,7 +109,7 @@ public class ResizeObjectsTool extends Tool {
 			}
 
 			if (object != null) {
-				clearPreviousObjects = editor.shift;
+				clearPreviousObjects = tab.editor.shift;
 				selectedObjects.add(object);
 			} else {
 				clearPreviousObjects = true;
@@ -123,8 +122,8 @@ public class ResizeObjectsTool extends Tool {
 
 	@Override
 	public void drag(int button, int x, int y) {
-		x = editor.snapToGrid(translateX(editor, x));
-		y = editor.snapToGrid(translateY(editor, y));
+		x = room.snapToGrid(translateX(x));
+		y = room.snapToGrid(translateY(y));
 
 		if (selectionMode == 1) {
 			areaX = x;
@@ -183,10 +182,10 @@ public class ResizeObjectsTool extends Tool {
 			int newY2 = this.startAreaY2 + aDiffY2 - diffY2;
 
 			this.positionChanges.add(new MoveObjects.PositionChange(roomObject, newX, newY, newX2 - newX, newY2 - newY, roomObject.x, roomObject.y, roomObject.getWidth(), roomObject.getHeight()));
-			roomObject.x = editor.snapToGrid(newX);
-			roomObject.y = editor.snapToGrid(newY);
-			roomObject.setWidth(editor.snapToGrid(newX2 - newX));
-			roomObject.setHeight(editor.snapToGrid(newY2 - newY));
+			roomObject.x = room.snapToGrid(newX);
+			roomObject.y = room.snapToGrid(newY);
+			roomObject.setWidth(room.snapToGrid(newX2 - newX));
+			roomObject.setHeight(room.snapToGrid(newY2 - newY));
 		}
 
 		this.click = false;
@@ -213,7 +212,7 @@ public class ResizeObjectsTool extends Tool {
 			// TODO: This is wacky. Should be a separate select objects type, like inverting the current selection (aka selecting the unselected and unselecting the selected)
 			// Unselect previous objects
 			if (this.clearPreviousObjects) {
-				this.editor.room.addHistory(SelectObjects.apply(this.room, this.room.getObjects().stream().filter(copy::contains).toList(), false));
+				this.room.addHistory(SelectObjects.apply(this.room, this.room.getObjects().stream().filter(copy::contains).toList(), false));
 				this.clearPreviousObjects = false;
 			}
 
@@ -276,7 +275,7 @@ public class ResizeObjectsTool extends Tool {
 	}
 
 	private void renderExpand(int x, int y) {
-		this.editor.getRenderer().rect2d(x - expandSize, y - expandSize, x + expandSize, y + expandSize);
+		renderer.rect2d(x - expandSize, y - expandSize, x + expandSize, y + expandSize);
 	}
 
 	private boolean isInsideExpand(int x, int y, int mx, int my) {

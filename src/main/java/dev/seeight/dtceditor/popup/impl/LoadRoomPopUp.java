@@ -8,20 +8,24 @@ import dev.seeight.common.lwjgl.nfd.FileFilter;
 import dev.seeight.dtceditor.DeltaCheapEditor;
 import dev.seeight.dtceditor.Room;
 import dev.seeight.dtceditor.popup.ComponentPopUp;
+import dev.seeight.dtceditor.tab.EditorTab;
 
+import java.util.ArrayList;
 import java.util.Objects;
 
 public class LoadRoomPopUp extends ComponentPopUp {
 	private String selectedFile;
 	private LabelComponent labelComponent;
+	private final Room room;
 
-	public LoadRoomPopUp(DeltaCheapEditor editor, String roomJsonFile) {
+	public LoadRoomPopUp(DeltaCheapEditor editor, String roomJsonFile, Room room) {
 		super(editor);
 		this.selectedFile = roomJsonFile;
+		this.room = room;
 	}
 
-	public LoadRoomPopUp(DeltaCheapEditor editor) {
-		this(editor, null);
+	public LoadRoomPopUp(DeltaCheapEditor editor, Room room) {
+		this(editor, null, room);
 	}
 
 	@Override
@@ -44,8 +48,9 @@ public class LoadRoomPopUp extends ComponentPopUp {
 			}
 
 			this.setClosing(true);
-			// TODO: not that bad
-			Room.loadFromFile(this.editor, selectedFile, editor.room);
+			Room room1 = new Room(640, 480, new ArrayList<>(), new ArrayList<>());
+			Room.loadFromFile(this.editor, selectedFile, room1);
+			this.editor.addTab(new EditorTab(editor, room1));
 			editor.getWindow().requestWindowAttention();
 		}));
 		this.components.add(new ButtonEventComponent("Cancel", button -> this.setClosing(true)));

@@ -1,6 +1,7 @@
 package dev.seeight.dtceditor.room.ext;
 
 import dev.seeight.dtceditor.DeltaCheapEditor;
+import dev.seeight.dtceditor.Room;
 import dev.seeight.dtceditor.popup.PopUp;
 import dev.seeight.dtceditor.popup.obj.TextInvisibleWallPopUp;
 import dev.seeight.dtceditor.room.IObjectTexture;
@@ -20,7 +21,7 @@ public class TextInvisibleWall extends RoomObject {
 	}
 
 	@Override
-	public PopUp getOptionsPopUp(DeltaCheapEditor editor) {
-		return new TextInvisibleWallPopUp(editor, this);
+	public PopUp getOptionsPopUp(DeltaCheapEditor editor, Room room) {
+		return new TextInvisibleWallPopUp(editor, this, room);
 	}
 }
