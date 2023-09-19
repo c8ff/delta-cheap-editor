@@ -1,11 +1,10 @@
 package dev.seeight.dtceditor.popup.impl;
 
-import com.google.gson.JsonObject;
+import dev.seeight.astrakit.components.impl.*;
 import dev.seeight.common.lwjgl.nfd.FileChooserUtil;
 import dev.seeight.common.lwjgl.nfd.FileFilter;
 import dev.seeight.dtceditor.DeltaCheapEditor;
-import dev.seeight.astrakit.components.Component;
-import dev.seeight.astrakit.components.impl.*;
+import dev.seeight.dtceditor.Room;
 import dev.seeight.dtceditor.popup.ComponentPopUp;
 import dev.seeight.dtceditor.popup.PopUp;
 import dev.seeight.util.StringUtil;
@@ -50,9 +49,9 @@ public class SaveRoomPopUp extends ComponentPopUp {
 				return;
 			}
 
-			String json = DeltaCheapEditor.gson.toJson(LoadRoomPopUp.serialize(this.editor));
+			String json = DeltaCheapEditor.gson.toJson(Room.serialize(this.editor.room));
 			try {
-				editor.setLoadedRoomPath(selectedPath);
+				editor.room.setPath(selectedPath);
 				Files.writeString(Path.of(selectedPath), json);
 				this.setClosing(true);
 			} catch (IOException x) {
@@ -152,12 +151,12 @@ public class SaveRoomPopUp extends ComponentPopUp {
 	}
 
 	public static void promptSave(DeltaCheapEditor editor, int mods) {
-		if (editor.getLoadedRoomPath() == null || ((mods & GLFW.GLFW_MOD_SHIFT) != 0)) {
-			editor.setPopUp(new SaveRoomPopUp(editor, editor.getLoadedRoomPath()));
+		if (editor.room.getPath() == null || ((mods & GLFW.GLFW_MOD_SHIFT) != 0)) {
+			editor.setPopUp(new SaveRoomPopUp(editor, editor.room.getPath()));
 		} else {
-			String json = DeltaCheapEditor.gson.toJson(LoadRoomPopUp.serialize(editor));
+			String json = DeltaCheapEditor.gson.toJson(Room.serialize(editor.room));
 			try {
-				Files.writeString(Path.of(editor.getLoadedRoomPath()), json);
+				Files.writeString(Path.of(editor.room.getPath()), json);
 			} catch (IOException x) {
 				x.printStackTrace();
 			}

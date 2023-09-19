@@ -1,25 +1,25 @@
 package dev.seeight.dtceditor.history.impl;
 
-import dev.seeight.dtceditor.DeltaCheapEditor;
+import dev.seeight.dtceditor.Room;
 import dev.seeight.dtceditor.history.IHistoryEntry;
 import dev.seeight.dtceditor.room.RoomObject;
 
 public class AddObject implements IHistoryEntry {
 	private final RoomObject object;
-	private final DeltaCheapEditor deltaCheapEditor;
+	private final Room room;
 
-	public AddObject(RoomObject object, DeltaCheapEditor deltaCheapEditor) {
+	public AddObject(RoomObject object, Room room) {
 		this.object = object;
-		this.deltaCheapEditor = deltaCheapEditor;
+		this.room = room;
 	}
 
 	@Override
 	public void undo() {
-		this.deltaCheapEditor.removeObject(object);
+		this.room.removeObject(object);
 	}
 
 	@Override
 	public void redo() {
-		this.deltaCheapEditor.addObject(object);
+		this.room.addObject(object);
 	}
 }

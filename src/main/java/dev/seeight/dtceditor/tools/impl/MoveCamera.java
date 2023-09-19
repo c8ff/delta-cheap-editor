@@ -1,6 +1,7 @@
 package dev.seeight.dtceditor.tools.impl;
 
 import dev.seeight.dtceditor.DeltaCheapEditor;
+import dev.seeight.dtceditor.Room;
 import dev.seeight.dtceditor.history.IHistoryEntry;
 import dev.seeight.dtceditor.tools.Tool;
 import dev.seeight.renderer.renderer.Texture;
@@ -16,8 +17,8 @@ public class MoveCamera extends Tool {
 	private double tempCameraY;
 	private boolean finished;
 
-	public MoveCamera(DeltaCheapEditor editor, Texture icon) {
-		super(editor);
+	public MoveCamera(DeltaCheapEditor editor, Room room, Texture icon) {
+		super(editor, room);
 		this.icon = icon;
 	}
 

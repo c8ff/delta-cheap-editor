@@ -1,11 +1,11 @@
 package dev.seeight.dtceditor.popup.obj;
 
-import dev.seeight.dtceditor.DeltaCheapEditor;
 import dev.seeight.astrakit.components.Component;
 import dev.seeight.astrakit.components.impl.ButtonEventComponent;
 import dev.seeight.astrakit.components.impl.SkipNewLineComponent;
 import dev.seeight.astrakit.components.impl.TextFieldComponent;
 import dev.seeight.astrakit.components.impl.TitleComponent;
+import dev.seeight.dtceditor.DeltaCheapEditor;
 import dev.seeight.dtceditor.history.impl.EditInvisibleWallText;
 import dev.seeight.dtceditor.popup.ComponentPopUp;
 import dev.seeight.dtceditor.room.ext.TextInvisibleWall;
@@ -64,7 +64,7 @@ public class TextInvisibleWallPopUp extends ComponentPopUp {
 				}
 			}
 
-			editor.addHistory(new EditInvisibleWallText(obj, strings));
+			editor.room.addHistory(new EditInvisibleWallText(obj, strings));
 			this.setClosing(true);
 		}));
 	}

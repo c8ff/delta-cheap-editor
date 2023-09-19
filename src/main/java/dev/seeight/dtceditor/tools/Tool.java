@@ -1,6 +1,7 @@
 package dev.seeight.dtceditor.tools;
 
 import dev.seeight.dtceditor.DeltaCheapEditor;
+import dev.seeight.dtceditor.Room;
 import dev.seeight.dtceditor.history.IHistoryEntry;
 import dev.seeight.dtceditor.popup.PopUp;
 import dev.seeight.renderer.renderer.Texture;
@@ -8,14 +9,16 @@ import org.jetbrains.annotations.Nullable;
 
 public abstract class Tool {
 	protected final DeltaCheapEditor editor;
+	protected final Room room;
 
 	public volatile float renderX;
 	public volatile float renderY;
 	public volatile float renderX2;
 	public volatile float renderY2;
 
-	public Tool(DeltaCheapEditor editor) {
+	public Tool(DeltaCheapEditor editor, Room room) {
 		this.editor = editor;
+		this.room = room;
 	}
 
 	public boolean contains(double x, double y) {

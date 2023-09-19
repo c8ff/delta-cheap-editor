@@ -1,6 +1,7 @@
 package dev.seeight.dtceditor.tools.impl;
 
 import dev.seeight.dtceditor.DeltaCheapEditor;
+import dev.seeight.dtceditor.Room;
 import dev.seeight.dtceditor.history.IHistoryEntry;
 import dev.seeight.dtceditor.history.impl.SelectObjects;
 import dev.seeight.dtceditor.room.RoomObject;
@@ -32,8 +33,8 @@ public class SelectTool extends Tool {
 	private double lastTime;
 
 	@Contract(pure = true)
-	public SelectTool(@NotNull DeltaCheapEditor editor, Texture icon) {
-		super(editor);
+	public SelectTool(@NotNull DeltaCheapEditor editor, Room room, Texture icon) {
+		super(editor, room);
 		this.icon = icon;
 	}
 
@@ -72,7 +73,7 @@ public class SelectTool extends Tool {
 			this.x2 = x;
 			this.y2 = y;
 			this.selObject = null;
-		} else if (this.editor.getSelectedCount() > 0 && !this.editor.ctrl) {
+		} else if (this.room.getSelectedCount() > 0 && !this.editor.ctrl) {
 			this.clearAll = true;
 			this.selObject = null;
 			this.finished = true;
@@ -128,8 +129,8 @@ public class SelectTool extends Tool {
 
 		if (this.clearAll) {
 			this.clearAll = false;
-			this.editor.unselectAllObjects();
-			return SelectObjects.apply(this.editor, this.editor.objectsUnmodifiable, false);
+			this.room.unselectAllObjects();
+			return SelectObjects.apply(this.room, this.room.getObjects(), false);
 		}
 
 		if (this.selObject != null) {
@@ -139,23 +140,23 @@ public class SelectTool extends Tool {
 			boolean a = !selObject.selected;
 
 			if (!this.editor.ctrl) {
-				this.editor.unselectAllObjects();
+				this.room.unselectAllObjects();
 			}
 
-			return SelectObjects.apply(this.editor, Collections.singletonList(selObject), a);
+			return SelectObjects.apply(this.room, Collections.singletonList(selObject), a);
 		}
 
 		if (this.selObjects == null) {
-			this.editor.unselectAllObjects();
+			this.room.unselectAllObjects();
 			return null;
 		}
 
 		List<RoomObject> selObjects = this.selObjects;
 		this.selObjects = null;
 		if (!this.editor.ctrl) {
-			this.editor.unselectAllObjects();
+			this.room.unselectAllObjects();
 		}
-		return SelectObjects.apply(this.editor, selObjects);
+		return SelectObjects.apply(this.room, selObjects);
 	}
 
 	@Override
@@ -165,7 +166,7 @@ public class SelectTool extends Tool {
 
 	@Nullable
 	public RoomObject getObjectAt(int x, int y) {
-		List<RoomObject> objectsUnmodifiable = this.editor.objectsUnmodifiable;
+		List<RoomObject> objectsUnmodifiable = this.room.getObjects();
 		for (int i = objectsUnmodifiable.size() - 1; i >= 0; i--) {
 			RoomObject roomObject = objectsUnmodifiable.get(i);
 			if (x > roomObject.x && y > roomObject.y && x < roomObject.x + roomObject.getWidth() && y < roomObject.y + roomObject.getHeight()) {
@@ -178,7 +179,7 @@ public class SelectTool extends Tool {
 
 	@NotNull
 	public List<RoomObject> getObjectsInside(float x, float y, float x2, float y2, @NotNull List<RoomObject> output) {
-		for (RoomObject roomObject : this.editor.objectsUnmodifiable) {
+		for (RoomObject roomObject : this.room.getObjects()) {
 			if (roomObject.x > x && roomObject.y > y && roomObject.x < x2 && roomObject.y < y2) {
 				output.add(roomObject);
 			}

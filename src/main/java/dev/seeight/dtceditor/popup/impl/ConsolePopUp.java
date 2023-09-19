@@ -1,10 +1,11 @@
 package dev.seeight.dtceditor.popup.impl;
 
 import com.google.gson.JsonObject;
+import dev.seeight.astrakit.components.impl.TextFieldComponent;
 import dev.seeight.common.lwjgl.font.FontRenderer;
 import dev.seeight.dtceditor.DeltaCheapEditor;
+import dev.seeight.dtceditor.Room;
 import dev.seeight.dtceditor.Server;
-import dev.seeight.astrakit.components.impl.TextFieldComponent;
 import dev.seeight.dtceditor.popup.PopUp;
 import dev.seeight.util.StringUtil;
 import org.lwjgl.glfw.GLFW;
@@ -130,8 +131,8 @@ public class ConsolePopUp extends PopUp {
 						return;
 					}
 
-					JsonObject object = LoadRoomPopUp.serialize(editor);
-					object.addProperty("tempFilePath", StringUtil.substringToLastIndexOf(editor.getLoadedRoomPath(), File.separator));
+					JsonObject object = Room.serialize(editor.room);
+					object.addProperty("tempFilePath", editor.room.getPath() == null ? null : StringUtil.substringToLastIndexOf(editor.room.getPath(), File.separator));
 					Server.serverThread.server.sendMessage("setRoom " + DeltaCheapEditor.gsonRaw.toJson(object), "OK");
 				} else {
 					lines.add("Unknown command: '" + input + "'. Type close to close the editor.");

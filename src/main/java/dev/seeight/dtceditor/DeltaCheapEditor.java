@@ -14,8 +14,8 @@ import dev.seeight.dtceditor.room.IObjectTexture;
 import dev.seeight.dtceditor.room.RoomObject;
 import dev.seeight.dtceditor.room.ext.DoorExit;
 import dev.seeight.dtceditor.room.ext.InvisibleWall;
-import dev.seeight.dtceditor.room.ext.Player;
 import dev.seeight.dtceditor.room.ext.RoomDoor;
+import dev.seeight.dtceditor.tab.EditorTab;
 import dev.seeight.dtceditor.tools.Tool;
 import dev.seeight.dtceditor.tools.impl.AddObjectTool;
 import dev.seeight.dtceditor.tools.impl.MoveCamera;
@@ -24,18 +24,15 @@ import dev.seeight.dtceditor.tools.impl.SelectTool;
 import dev.seeight.dtceditor.utils.IOUtil;
 import dev.seeight.renderer.renderer.Texture;
 import dev.seeight.renderer.renderer.gl.OpenGLRenderer2;
-import dev.seeight.renderer.renderer.gl.components.GLTexture;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWDropCallback;
 import org.lwjgl.opengl.GL11;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.function.Consumer;
+import java.util.Queue;
+import java.util.concurrent.LinkedTransferQueue;
 
 public class DeltaCheapEditor implements StuffListener {
 	public static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
@@ -68,24 +65,9 @@ public class DeltaCheapEditor implements StuffListener {
 
 	public final Mouse mouse;
 
-	private final List<IHistoryEntry> historyEntries;
-	private int historyIndex;
+	private EditorTab tab;
 
 	private final List<Tool> tools;
-
-	private final List<RoomObject> objects;
-	public final List<RoomObject> objectsUnmodifiable;
-
-	public int roomWidth = 640;
-	public int roomHeight = 480;
-
-	private String loadedBackgroundPath;
-	private Texture backgroundTexture;
-	private String backgroundToLoad;
-	private boolean pendingBackground;
-	private List<Layer> layers;
-	private List<Layer> layersToLoad;
-	private boolean pendingLayers;
 
 	private boolean renderGrid = true;
 
@@ -95,7 +77,9 @@ public class DeltaCheapEditor implements StuffListener {
 
 	private final ObjectTextureProvider objectTextureProvider;
 
-	private String loadedRoomPath = null;
+	public Room room;
+
+	private final Queue<Runnable> frameStartTasks = new LinkedTransferQueue<>();
 
 	public DeltaCheapEditor(Window window, OpenGLRenderer2 renderer) {
 		this.mouse = new Mouse();
@@ -110,16 +94,15 @@ public class DeltaCheapEditor implements StuffListener {
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
-		this.historyEntries = new ArrayList<>();
-		this.objects = new ArrayList<>();
-		this.objectsUnmodifiable = Collections.unmodifiableList(this.objects);
 		this.popUp = null;
+		this.room = new Room(640, 480, new ArrayList<>(), new ArrayList<>());
+
 		this.tools = new ArrayList<>();
 		try {
-			this.tools.add(new AddObjectTool(this, IOUtil.textureFromPath(this, "/icons/addObject.png")));
-			this.tools.add(new SelectTool(this, IOUtil.textureFromPath(this, "/icons/select.png")));
-			this.tools.add(new MoveCamera(this, IOUtil.textureFromPath(this, "/icons/move.png")));
-			this.tools.add(new ResizeObjectsTool(this, IOUtil.textureFromPath(this, "/icons/resizeObjects.png")));
+			this.tools.add(new AddObjectTool(this, this.room, IOUtil.textureFromPath(this, "/icons/addObject.png")));
+			this.tools.add(new SelectTool(this, this.room, IOUtil.textureFromPath(this, "/icons/select.png")));
+			this.tools.add(new MoveCamera(this, this.room, IOUtil.textureFromPath(this, "/icons/move.png")));
+			this.tools.add(new ResizeObjectsTool(this, this.room, IOUtil.textureFromPath(this, "/icons/resizeObjects.png")));
 			this.selectedTool = this.tools.get(0);
 		} catch (IOException e) {
 			throw new RuntimeException(e);
@@ -138,6 +121,8 @@ public class DeltaCheapEditor implements StuffListener {
 				}
 			}
 		});
+
+		tab = new EditorTab(this, this.room);
 	}
 
 	@Override
@@ -147,7 +132,7 @@ public class DeltaCheapEditor implements StuffListener {
 
 	@Override
 	public void framebufferSize(int width, int height) {
-
+		tab.framebufferSize(width, height);
 	}
 
 	@Override
@@ -257,7 +242,7 @@ public class DeltaCheapEditor implements StuffListener {
 				this.cameraX = 0;
 				this.cameraY = 0;
 				this.zoom = 1;
-				this.historyEntries.clear();
+				this.room.clearHistory();
 			}
 			case GLFW.GLFW_KEY_S -> {
 				if ((mods & GLFW.GLFW_MOD_CONTROL) == 0) {
@@ -268,40 +253,36 @@ public class DeltaCheapEditor implements StuffListener {
 			}
 			case GLFW.GLFW_KEY_A -> {
 				if ((mods & GLFW.GLFW_MOD_CONTROL) != 0) {
-					this.addHistory(new SelectObjects(this, collectSelectedObjects(roomObject -> roomObject.selected = true), true));
+					this.room.addHistory(new SelectObjects(this.room, this.room.collectSelectedObjects(roomObject -> roomObject.selected = true), true));
 				}
 			}
 			case GLFW.GLFW_KEY_DELETE -> {
-				if (this.getSelectedCount() == 0) {
+				if (this.room.getSelectedCount() == 0) {
 					return;
 				}
 
 				List<RoomObject> objects1 = new ArrayList<>();
-				for (RoomObject object : this.objects) {
+				for (RoomObject object : this.room.getObjects()) {
 					if (object.selected) {
 						objects1.add(object);
 					}
 				}
 
-				this.objects.removeAll(objects1);
-				this.addHistory(new DeleteObjects(this.objects, objects1));
+				this.room.removeObjects(objects1);
+				this.room.addHistory(new DeleteObjects(this.room.getObjects(), objects1));
 			}
 			case GLFW.GLFW_KEY_Z -> {
 				if ((mods & GLFW.GLFW_MOD_CONTROL) != 0) {
-					if (this.historyIndex > 0 && this.historyIndex <= this.historyEntries.size()) {
-						this.historyEntries.get(--this.historyIndex).undo();
-					}
+					this.room.historyUndo();
 				}
 			}
 			case GLFW.GLFW_KEY_Y -> {
 				if ((mods & GLFW.GLFW_MOD_CONTROL) != 0) {
-					if (this.historyIndex < this.historyEntries.size() && this.historyIndex >= -1) {
-						this.historyEntries.get(this.historyIndex++).redo();
-					}
+					this.room.historyRedo();
 				}
 			}
 			case GLFW.GLFW_KEY_V -> this.setPopUp(new GridSizePopUp(this));
-			case GLFW.GLFW_KEY_B -> this.setPopUp(new RoomDetails(this));
+			case GLFW.GLFW_KEY_B -> this.setPopUp(new RoomDetails(this, room));
 			case GLFW.GLFW_KEY_N -> this.setPopUp(new LoadRoomPopUp(this));
 			case GLFW.GLFW_KEY_U -> this.setPopUp(new ConsolePopUp(this));
 			case GLFW.GLFW_KEY_D -> {
@@ -373,80 +354,25 @@ public class DeltaCheapEditor implements StuffListener {
 		}
 	}
 
-	protected void checkBackgroundTextureQueue() {
-		if (this.pendingBackground) {
-			if (this.backgroundToLoad == null) {
-				if (this.backgroundTexture != null) {
-					this.backgroundTexture.delete();
-				}
-				this.backgroundTexture = null;
-				this.loadedBackgroundPath = null;
-			} else {
-				try {
-					if (this.backgroundTexture != null) {
-						this.backgroundTexture.delete();
-					}
-					this.backgroundTexture = GLTexture.fromInputStream(new FileInputStream(this.backgroundToLoad));
-					this.loadedBackgroundPath = this.backgroundToLoad;
-				} catch (IOException e) {
-					System.err.print("Couldn't load texture. ");
-					e.printStackTrace();
-				}
-			}
-
-			this.pendingBackground = false;
-		}
-	}
-
-	protected void checkLayerQueue() {
-		if (!this.pendingLayers) {
-			return;
-		}
-
-		if (this.layersToLoad == null) {
-			if (this.layers != null) {
-				for (Layer layer : this.layers) {
-					if (layer.texture == null) {
-						continue;
-					}
-
-					layer.texture.delete();
-				}
-			}
-
-			this.layers = null;
-		} else {
-			if (this.layers != null) {
-				for (Layer layer : this.layers) {
-					if (layer.texture == null) {
-						continue;
-					}
-
-					layer.texture.delete();
-				}
-			}
-
-			this.layers = this.layersToLoad;
-			for (Layer layer : this.layers) {
-				try {
-					layer.createTexture();
-				} catch (IOException e) {
-					throw new RuntimeException(e);
-				}
-			}
-		}
-	}
-
 	public void render() {
 		if (selectedTool.isActionFinished()) {
 			IHistoryEntry next = selectedTool.getNext();
 			if (next != null) {
-				this.addHistory(next);
+				this.room.addHistory(next);
 			}
 		}
 
 		if (!this.dirty) {
 			return;
+		}
+
+		while (!frameStartTasks.isEmpty()) {
+			try {
+				frameStartTasks.poll().run();
+			} catch (Exception e) {
+				System.err.print("An error occurred while executing task. ");
+				e.printStackTrace(System.err);
+			}
 		}
 
 		GL11.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
@@ -466,6 +392,8 @@ public class DeltaCheapEditor implements StuffListener {
 
 			renderer.setViewMatrix4f(m0);
 
+			tab.render();
+
 			renderToolIcons();
 			renderPopUp();
 		} catch (Exception e) {
@@ -481,8 +409,6 @@ public class DeltaCheapEditor implements StuffListener {
 
 		if (!window.shouldClose()) {
 			try {
-				this.checkBackgroundTextureQueue();
-				this.checkLayerQueue();
 				this.checkNextPopUp();
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -496,18 +422,19 @@ public class DeltaCheapEditor implements StuffListener {
 	}
 
 	protected void renderBackground() {
-		if (backgroundTexture == null) {
+		if (this.room.getBackgroundTexture() == null) {
 			renderer.color(0.25F, 0.25F, 0.25F, 1);
-			renderer.rect2d(0, 0, roomWidth, roomHeight);
+			renderer.rect2d(0, 0, this.room.getWidth(), this.room.getHeight());
 		} else {
 			renderer.color(1, 1, 1, 1);
-			renderer.texRect2d(backgroundTexture, 0, 0, roomWidth, roomHeight);
+			renderer.texRect2d(this.room.getBackgroundTexture(), 0, 0, this.room.getWidth(), this.room.getHeight());
 		}
 
-		if (layers != null) {
+		if (!this.room.getLayers().isEmpty()) {
 			renderer.color(1, 1, 1, 1);
-			for (Layer layer : layers) {
-				renderer.texRect2d(layer.texture, 0, 0, roomWidth, roomHeight);
+			for (Layer layer : this.room.getLayers()) {
+				if (layer.texture == null || layer.texture.isDeleted()) continue;
+				renderer.texRect2d(layer.texture, 0, 0, this.room.getWidth(), this.room.getHeight());
 			}
 		}
 	}
@@ -515,12 +442,12 @@ public class DeltaCheapEditor implements StuffListener {
 	protected void renderGrid() {
 		if (!renderGrid) return;
 		renderer.color(1, 1, 1, 0.25F); // TODO: Make grid opacity custom
-		gridRenderer.render(0, 0, roomWidth, roomHeight, cameraX, cameraY, zoom, window.getHeight(), gridSize);
+		gridRenderer.render(0, 0, this.room.getWidth(), this.room.getHeight(), cameraX, cameraY, zoom, window.getHeight(), gridSize);
 	}
 
 	protected void renderObjects() {
 		renderer.color(1, 1, 1, 0.25F);
-		for (RoomObject object : this.objects) {
+		for (RoomObject object : this.room.getObjects()) {
 			float a = object instanceof InvisibleWall ? 0.3F : (object instanceof DoorExit || object instanceof RoomDoor ? 0.6F : 1F);
 
 			if (object.selected) {
@@ -575,18 +502,7 @@ public class DeltaCheapEditor implements StuffListener {
 		}
 	}
 
-	public void addHistory(IHistoryEntry historyEntry) {
-		if (this.historyIndex < this.historyEntries.size() - 1) {
-			this.historyEntries.subList(Math.max(this.historyIndex, 0), this.historyEntries.size()).clear();
-		}
 
-		if (this.historyIndex == 0 && !this.historyEntries.isEmpty()) {
-			this.historyEntries.clear();
-		}
-
-		this.historyEntries.add(historyEntry);
-		this.historyIndex = this.historyEntries.size();
-	}
 
 	public void shutdown() {
 		try {
@@ -594,50 +510,6 @@ public class DeltaCheapEditor implements StuffListener {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-	}
-
-	public List<RoomObject> collectSelectedObjects(Consumer<RoomObject> consumer) {
-		List<RoomObject> list = new ArrayList<>();
-
-		for (RoomObject object : this.objects) {
-			if (object.selected) {
-				try {
-					list.add(object);
-					consumer.accept(object);
-				} catch (Exception e) {
-					e.printStackTrace();
-					break;
-				}
-			}
-		}
-
-		return list;
-	}
-
-	public int getSelectedCount() {
-		int c = 0;
-
-		for (RoomObject object : this.objects) {
-			if (object.selected) {
-				c++;
-			}
-		}
-
-		return c;
-	}
-
-	public void addObject(RoomObject object) {
-		if (object instanceof Player) {
-			if (this.objects.contains(object)) {
-				return;
-			}
-		}
-
-		this.objects.add(object);
-	}
-
-	public void removeObject(RoomObject object) {
-		this.objects.remove(object);
 	}
 
 	public int snapToGrid(float input) {
@@ -674,72 +546,12 @@ public class DeltaCheapEditor implements StuffListener {
 		this.gridSize = size;
 	}
 
-	public void unselectAllObjects() {
-		for (RoomObject object : this.objects) {
-			object.selected = false;
-		}
+	public void queueLoadBackground(Room room, String backgroundPath) {
+		this.frameStartTasks.add(() -> room.loadBackground(backgroundPath));
 	}
 
-	public void setBackground(String backgroundToLoad) {
-		this.backgroundToLoad = backgroundToLoad;
-		this.pendingBackground = true;
-	}
-
-	public void setLayers(List<Layer> layers) {
-		this.layersToLoad = layers;
-		this.pendingLayers = true;
-	}
-
-	public List<Layer> getLayers() {
-		return layers;
-	}
-
-	public String getLoadedBackgroundPath() {
-		return loadedBackgroundPath;
-	}
-
-	public String getLoadedRoomPath() {
-		return loadedRoomPath;
-	}
-
-	public void setLoadedRoomPath(String loadedRoomPath) {
-		this.loadedRoomPath = loadedRoomPath;
-
-		if (loadedRoomPath == null) {
-			this.window.setTitle("Editor");
-		} else {
-			this.window.setTitle("Editor | " + loadedRoomPath);
-		}
-	}
-
-	public void clearObjects() {
-		this.objects.clear();
-	}
-
-	public void clearBackground() {
-		this.setBackground(null);
-	}
-
-	public void clearHistory() {
-		this.historyEntries.clear();
-		this.historyIndex = 0;
-	}
-
-	public static class Layer {
-		private transient GLTexture texture;
-		public String filename;
-		public String order;
-		public transient String folder;
-
-		public Layer(String filename, String order, String folder) {
-			this.filename = filename;
-			this.order = order;
-			this.folder = folder;
-		}
-
-		public void createTexture() throws IOException {
-			texture = GLTexture.fromInputStream(new FileInputStream(folder + File.separator + filename));
-		}
+	public void queueLoadLayerTextures(Room room) {
+		this.frameStartTasks.add(room::loadLayerTextures);
 	}
 
 	private static class ObjectTextureProvider implements IObjectTexture {

@@ -1,8 +1,8 @@
 package dev.seeight.dtceditor.popup.impl;
 
-import dev.seeight.dtceditor.DeltaCheapEditor;
 import dev.seeight.astrakit.components.impl.ButtonEventComponent;
 import dev.seeight.astrakit.components.impl.TitleComponent;
+import dev.seeight.dtceditor.DeltaCheapEditor;
 import dev.seeight.dtceditor.popup.ComponentPopUp;
 import dev.seeight.dtceditor.room.RoomObject;
 

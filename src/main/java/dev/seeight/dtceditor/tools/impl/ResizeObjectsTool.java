@@ -1,6 +1,7 @@
 package dev.seeight.dtceditor.tools.impl;
 
 import dev.seeight.dtceditor.DeltaCheapEditor;
+import dev.seeight.dtceditor.Room;
 import dev.seeight.dtceditor.history.IHistoryEntry;
 import dev.seeight.dtceditor.history.impl.MoveObjects;
 import dev.seeight.dtceditor.history.impl.SelectObjects;
@@ -32,8 +33,8 @@ public class ResizeObjectsTool extends Tool {
 	private final List<RoomObject> selectedObjects;
 	private boolean clearPreviousObjects;
 
-	public ResizeObjectsTool(DeltaCheapEditor editor, Texture icon) {
-		super(editor);
+	public ResizeObjectsTool(DeltaCheapEditor editor, Room room, Texture icon) {
+		super(editor, room);
 		this.icon = icon;
 		this.positionChanges = new ArrayList<>();
 		this.selectedObjects = new ArrayList<>();
@@ -99,9 +100,9 @@ public class ResizeObjectsTool extends Tool {
 
 			RoomObject object = null;
 
-			List<RoomObject> objectsUnmodifiable = this.editor.objectsUnmodifiable;
-			for (int i = objectsUnmodifiable.size() - 1; i >= 0; i--) {
-				RoomObject roomObject = objectsUnmodifiable.get(i);
+			List<RoomObject> objects = this.room.getObjects();
+			for (int i = objects.size() - 1; i >= 0; i--) {
+				RoomObject roomObject = objects.get(i);
 				if (x > roomObject.x && y > roomObject.y && x < roomObject.x + roomObject.getWidth() && y < roomObject.y + roomObject.getHeight()) {
 					object = roomObject;
 					break;
@@ -166,7 +167,7 @@ public class ResizeObjectsTool extends Tool {
 		int aDiffX2 = this.areaX2 - this.startAreaX2;
 		int aDiffY2 = this.areaY2 - this.startAreaY2;
 
-		for (RoomObject roomObject : this.editor.objectsUnmodifiable) {
+		for (RoomObject roomObject : this.room.getObjects()) {
 			if (!roomObject.selected) {
 				continue;
 			}
@@ -212,16 +213,16 @@ public class ResizeObjectsTool extends Tool {
 			// TODO: This is wacky. Should be a separate select objects type, like inverting the current selection (aka selecting the unselected and unselecting the selected)
 			// Unselect previous objects
 			if (this.clearPreviousObjects) {
-				this.editor.addHistory(SelectObjects.apply(this.editor, this.editor.objectsUnmodifiable.stream().filter(copy::contains).toList(), false));
+				this.editor.room.addHistory(SelectObjects.apply(this.room, this.room.getObjects().stream().filter(copy::contains).toList(), false));
 				this.clearPreviousObjects = false;
 			}
 
 			// Select clicked objects
-			return SelectObjects.apply(this.editor, copy);
+			return SelectObjects.apply(this.room, copy);
 		} else if (this.clearPreviousObjects) {
 			this.clearPreviousObjects = false;
 			this.positionChanges.clear();
-			return SelectObjects.apply(this.editor, this.editor.objectsUnmodifiable, false);
+			return SelectObjects.apply(this.room, this.room.getObjects(), false);
 		}
 
 		// Apply changes to objects and add to history
@@ -241,7 +242,7 @@ public class ResizeObjectsTool extends Tool {
 		int areaX2 = Integer.MIN_VALUE;
 		int areaY2 = Integer.MIN_VALUE;
 
-		if (this.editor.objectsUnmodifiable.isEmpty()) {
+		if (this.room.getObjects().isEmpty()) {
 			this.areaX = 0;
 			this.areaY = 0;
 			this.areaX2 = 0;
@@ -249,7 +250,7 @@ public class ResizeObjectsTool extends Tool {
 			return;
 		}
 
-		for (RoomObject roomObject : this.editor.objectsUnmodifiable) {
+		for (RoomObject roomObject : this.room.getObjects()) {
 			if (roomObject.selected) {
 				if (roomObject.x < areaX) {
 					areaX = roomObject.x;

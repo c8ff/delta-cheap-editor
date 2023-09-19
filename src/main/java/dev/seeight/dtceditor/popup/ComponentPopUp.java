@@ -1,10 +1,10 @@
 package dev.seeight.dtceditor.popup;
 
+import dev.seeight.astrakit.IComponentRenderer;
+import dev.seeight.astrakit.components.Component;
+import dev.seeight.astrakit.components.impl.*;
 import dev.seeight.common.lwjgl.font.FontRenderer;
 import dev.seeight.dtceditor.DeltaCheapEditor;
-import dev.seeight.astrakit.components.Component;
-import dev.seeight.astrakit.IComponentRenderer;
-import dev.seeight.astrakit.components.impl.*;
 import dev.seeight.util.MathUtil;
 import org.lwjgl.glfw.GLFW;
 

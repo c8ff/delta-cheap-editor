@@ -1,6 +1,7 @@
 package dev.seeight.dtceditor.tools.impl;
 
 import dev.seeight.dtceditor.DeltaCheapEditor;
+import dev.seeight.dtceditor.Room;
 import dev.seeight.dtceditor.history.IHistoryEntry;
 import dev.seeight.dtceditor.history.impl.AddObject;
 import dev.seeight.dtceditor.popup.PopUp;
@@ -29,8 +30,8 @@ public class AddObjectTool extends Tool {
 	private ObjectCreator creator;
 
 	@Contract(pure = true)
-	public AddObjectTool(@NotNull DeltaCheapEditor editor, Texture icon) {
-		super(editor);
+	public AddObjectTool(@NotNull DeltaCheapEditor editor, Room room, Texture icon) {
+		super(editor, room);
 		this.icon = icon;
 		this.creator = ObjectCreator.INVISIBLE_WALL;
 	}
@@ -67,7 +68,7 @@ public class AddObjectTool extends Tool {
 
 	@Override
 	public void lift(int button, int x, int y) {
-		editor.unselectAllObjects();
+		room.unselectAllObjects();
 
 		object = creator.createObject(editor);
 
@@ -88,7 +89,7 @@ public class AddObjectTool extends Tool {
 		object.setWidth(normX2 - normX);
 		object.setHeight(normY2 - normY);
 
-		this.editor.addObject(object);
+		room.addObject(object);
 
 		click = false;
 		finished = true;
@@ -116,7 +117,7 @@ public class AddObjectTool extends Tool {
 
 	@Override
 	public IHistoryEntry getNext() {
-		return new AddObject(object, editor);
+		return new AddObject(object, room);
 	}
 
 	@Override

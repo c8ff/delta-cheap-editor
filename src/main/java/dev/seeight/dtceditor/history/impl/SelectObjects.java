@@ -1,6 +1,6 @@
 package dev.seeight.dtceditor.history.impl;
 
-import dev.seeight.dtceditor.DeltaCheapEditor;
+import dev.seeight.dtceditor.Room;
 import dev.seeight.dtceditor.history.IHistoryEntry;
 import dev.seeight.dtceditor.room.RoomObject;
 
@@ -9,17 +9,17 @@ import java.util.List;
 public class SelectObjects implements IHistoryEntry {
 	private final List<RoomObject> objects;
 	private final boolean state;
-	private final DeltaCheapEditor editor;
+	private final Room room;
 
-	public SelectObjects(DeltaCheapEditor editor, List<RoomObject> objects, boolean state) {
-		this.editor = editor;
+	public SelectObjects(Room room, List<RoomObject> objects, boolean state) {
+		this.room = room;
 		this.objects = objects;
 		this.state = state;
 	}
 
 	@Override
 	public void undo() {
-		editor.unselectAllObjects();
+		room.unselectAllObjects();
 		for (RoomObject roomObject : this.objects) {
 			roomObject.selected = !state;
 		}
@@ -27,20 +27,20 @@ public class SelectObjects implements IHistoryEntry {
 
 	@Override
 	public void redo() {
-		editor.unselectAllObjects();
+		room.unselectAllObjects();
 		for (RoomObject roomObject : this.objects) {
 			roomObject.selected = state;
 		}
 	}
 
-	public static SelectObjects apply(DeltaCheapEditor editor, List<RoomObject> objects) {
-		return apply(editor, objects, true);
+	public static SelectObjects apply(Room room, List<RoomObject> objects) {
+		return apply(room, objects, true);
 	}
 
-	public static SelectObjects apply(DeltaCheapEditor editor, List<RoomObject> objects, boolean state) {
+	public static SelectObjects apply(Room room, List<RoomObject> objects, boolean state) {
 		for (RoomObject object : objects) {
 			object.selected = state;
 		}
-		return new SelectObjects(editor, objects, state);
+		return new SelectObjects(room, objects, state);
 	}
 }
