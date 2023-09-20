@@ -418,6 +418,14 @@ public class Room {
                 }
             }
         }
+
+        JsonElement editorElm = object.get("editor");
+        if (editorElm instanceof JsonObject o) {
+            JsonElement gridSize1 = o.get("gridSize");
+            if (gridSize1 != null) {
+                room.setGridSize(gridSize1.getAsInt());
+            }
+        }
     }
 
     public static JsonObject serialize(Room room) {
@@ -479,6 +487,10 @@ public class Room {
         root.addProperty("height", room.getHeight());
         root.add("layers", layers);
         root.add("exits", exits);
+
+        JsonObject editorObj = new JsonObject();
+        editorObj.addProperty("gridSize", room.gridSize);
+        root.add("editor", editorObj);
 
         return root;
     }
