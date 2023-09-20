@@ -14,6 +14,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Objects;
 
 public class SaveRoomPopUp extends ComponentPopUp {
 	private String selectedPath;
@@ -38,7 +39,7 @@ public class SaveRoomPopUp extends ComponentPopUp {
 		this.components.add(new LabelComponent("(make sure to save in the correct room directory)"));
 		this.components.add(SkipNewLineComponent.INSTANCE);
 		this.components.add(new ButtonEventComponent("Select File...", button -> {
-			String defaultPath = StringUtil.substringToLastIndexOf(selectedPath, File.separator) + File.separator;
+			String defaultPath = Objects.requireNonNull(StringUtil.substringToLastIndexOf(selectedPath, File.separator), "null") + File.separator;
 			selectedPath = FileChooserUtil.openSaveChooser(defaultPath, "room.json", new FileFilter("Room", "json"));
 			e.setString(String.valueOf(this.selectedPath));
 		}));
