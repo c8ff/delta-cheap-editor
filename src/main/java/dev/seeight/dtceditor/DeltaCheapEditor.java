@@ -118,6 +118,22 @@ public class DeltaCheapEditor implements StuffListener {
 	public void mouseButton(int button, int action) {
 		this.mouse.mouseButton(button, action);
 
+		if (this.popUp != null) {
+			if (!this.popUp.contains(mouse.getX(), mouse.getY())) {
+				if (button == GLFW.GLFW_MOUSE_BUTTON_1 && action == GLFW.GLFW_PRESS) {
+					if (this.popUp.isClosing()) {
+						this.popUp.setClosingProgress(100F);
+					} else {
+						this.popUp.setClosing(true);
+					}
+				}
+			} else if (!this.popUp.isClosing()) {
+				this.popUp.mouseButton(button, action);
+			}
+
+			return;
+		}
+
 		if (clickedTabBounds(mouse.getXi(), mouse.getYi())) {
 			int i = clickedTab(mouse.getXi(), mouse.getYi());
 
@@ -145,22 +161,6 @@ public class DeltaCheapEditor implements StuffListener {
 						this.removeTab(iTab);
 					}
 				}
-			}
-
-			return;
-		}
-
-		if (this.popUp != null) {
-			if (!this.popUp.contains(mouse.getX(), mouse.getY())) {
-				if (button == GLFW.GLFW_MOUSE_BUTTON_1 && action == GLFW.GLFW_PRESS) {
-					if (this.popUp.isClosing()) {
-						this.popUp.setClosingProgress(100F);
-					} else {
-						this.popUp.setClosing(true);
-					}
-				}
-			} else if (!this.popUp.isClosing()) {
-				this.popUp.mouseButton(button, action);
 			}
 
 			return;
