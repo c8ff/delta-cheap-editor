@@ -144,7 +144,7 @@ public class EditorTab implements ITab {
             }
             case GLFW.GLFW_KEY_V -> editor.setPopUp(new GridSizePopUp(editor, room));
             case GLFW.GLFW_KEY_B -> editor.setPopUp(new RoomDetails(editor, room));
-            case GLFW.GLFW_KEY_N -> editor.setPopUp(new LoadRoomPopUp(editor, room));
+            case GLFW.GLFW_KEY_N -> editor.setPopUp(new LoadRoomPopUp(editor));
             case GLFW.GLFW_KEY_U -> editor.setPopUp(new ConsolePopUp(editor, room));
         }
     }
@@ -178,6 +178,12 @@ public class EditorTab implements ITab {
         renderArea(mat, toolArea);
         GL11.glDisable(GL11.GL_SCISSOR_TEST);
 
+    }
+
+    @Override
+    public boolean isSaved() {
+        // TODO: Not implemented.
+        return false;
     }
 
     private void renderArea(float[] mat, Area area) {

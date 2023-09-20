@@ -7,6 +7,7 @@ import dev.seeight.common.lwjgl.font.FontRenderer;
 import dev.seeight.dtceditor.input.Mouse;
 import dev.seeight.dtceditor.mgr.TextureManager;
 import dev.seeight.dtceditor.popup.PopUp;
+import dev.seeight.dtceditor.popup.impl.AskCloseTabPopUp;
 import dev.seeight.dtceditor.popup.impl.LoadRoomPopUp;
 import dev.seeight.dtceditor.room.IObjectTexture;
 import dev.seeight.dtceditor.tab.EditorTab;
@@ -60,6 +61,8 @@ public class DeltaCheapEditor implements StuffListener {
 
 	private final TextureManager textureManager;
 
+	private final Texture addTabIcon;
+
 	private final List<ITab> tabs;
 	private ITab tab;
 
@@ -78,6 +81,7 @@ public class DeltaCheapEditor implements StuffListener {
 			this.font = IOUtil.fontFromPath(renderer, gson, this, "/fonts/inter18/", this.textureManager);
 			this.fontBold = IOUtil.fontFromPath(renderer, gson, this, "/fonts/interBold24/", this.textureManager);
 			this.gridRenderer = new GridRenderer(renderer, "/", this.textureManager);
+			this.addTabIcon = this.textureManager.get("/icons/add_tab.png");
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
@@ -92,7 +96,7 @@ public class DeltaCheapEditor implements StuffListener {
 						p.setSelectedFile(name);
 					} else {
 						if (tab instanceof EditorTab t) {
-							DeltaCheapEditor.this.setPopUp(new LoadRoomPopUp(DeltaCheapEditor.this, name, t.room));
+							DeltaCheapEditor.this.setPopUp(new LoadRoomPopUp(DeltaCheapEditor.this, name));
 						}
 					}
 				}
@@ -117,18 +121,28 @@ public class DeltaCheapEditor implements StuffListener {
 		if (clickedTabBounds(mouse.getXi(), mouse.getYi())) {
 			int i = clickedTab(mouse.getXi(), mouse.getYi());
 
+			// Clicked new tab
+			if (i == -2) {
+				if (button == GLFW.GLFW_MOUSE_BUTTON_1 && action == GLFW.GLFW_PRESS) {
+					EditorTab tab1 = new EditorTab(this, new Room(640, 480, new ArrayList<>(), new ArrayList<>()));
+					this.addTab(tab1);
+					this.setTab(tab1);
+				}
+
+				return;
+			}
+
 			if (i < 0) return; // Selected nothing
 
 			if (action == GLFW.GLFW_PRESS) {
 				if (button == GLFW.GLFW_MOUSE_BUTTON_1) {
 					this.setTab(this.tabs.get(i));
 				} else if (button == GLFW.GLFW_MOUSE_BUTTON_3) {
-					int c = this.tabs.indexOf(tab);
-					this.tabs.remove(i); // TODO: Ask the user before deleting all progress lol
-					if (tabs.isEmpty()) {
-						this.setTab(null);
-					} else if (c == i) {
-						this.setTab(this.tabs.get(tabs.size() - 1));
+					ITab iTab = this.tabs.get(i);
+					if (!iTab.isSaved()) {
+						this.setPopUp(new AskCloseTabPopUp(this, iTab));
+					} else {
+						this.removeTab(iTab);
 					}
 				}
 			}
@@ -302,14 +316,14 @@ public class DeltaCheapEditor implements StuffListener {
 	}
 
 	protected void renderTabs() {
-		float width = window.getWidth();
+		float x = tab instanceof EditorTab ? 32 : 0; // Spacing for EditorTab's tools
+		float width = window.getWidth() - x;
 		float height = 40;
-		float x = 0;
 		float y = window.getHeight() - height;
 		float tabWidth = 200;
 		float tabHeight = 35;
 
-		renderer.color(1, 1, 1, 0.25F);
+		renderer.color(0.85F, 0.85F, 0.85F, 1F);
 		renderer.rect2d(x, y, x + width, y + height);
 
 		x += 6;
@@ -333,6 +347,13 @@ public class DeltaCheapEditor implements StuffListener {
 			}
 			x += tabWidth + 6;
 		}
+
+		x += addTabIcon.getWidth();
+
+		int bx = (int) (x - addTabIcon.getWidth() / 2F);
+		int by = (int) (y + (height - addTabIcon.getHeight()) / 2F) + 1;
+		renderer.color(0, 0, 0, 1);
+		renderer.texRect2d(addTabIcon, bx, by, bx + addTabIcon.getWidth(), by + addTabIcon.getHeight());
 	}
 
 	protected boolean clickedTabBounds(int mx, int my) {
@@ -345,8 +366,8 @@ public class DeltaCheapEditor implements StuffListener {
 	}
 
 	protected int clickedTab(int mx, int my) {
+		float x = tab instanceof EditorTab ? 32 : 0; // Spacing for EditorTab's tools
 		float height = 40;
-		float x = 0;
 		float y = window.getHeight() - height;
 		float tabWidth = 200;
 		float tabHeight = 35;
@@ -362,6 +383,13 @@ public class DeltaCheapEditor implements StuffListener {
 			}
 
 			x += tabWidth + 6;
+		}
+
+		x += addTabIcon.getWidth();
+
+		int bx = (int) (x - addTabIcon.getWidth() / 2F);
+		if (bx < mx && y < my && bx + addTabIcon.getWidth() > mx && y + height > my) {
+			return -2;
 		}
 
 		return -1;
@@ -439,6 +467,22 @@ public class DeltaCheapEditor implements StuffListener {
 		if (this.tab == null) {
 			this.tab = tabs.get(0);
 		}
+	}
+
+	public void removeTab(ITab tab) {
+		if (this.tabs.remove(tab)) {
+			if (this.tab == tab) {
+				if (this.tabs.isEmpty()) {
+					this.setTab(null);
+				} else {
+					this.setTab(this.tabs.get(this.tabs.size() - 1));
+				}
+			}
+		}
+	}
+
+	public ITab getTab() {
+		return this.tab;
 	}
 
 	private static class ObjectTextureProvider implements IObjectTexture {

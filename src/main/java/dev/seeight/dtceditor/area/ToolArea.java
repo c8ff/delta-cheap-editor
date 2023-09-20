@@ -54,7 +54,7 @@ public class ToolArea extends Area {
         float y = this.y;
 
         // background
-        renderer.color(0, 0, 0, 0.75F);
+        renderer.color(0.85F, 0.85F, 0.85F, 1);
         renderer.rect2d(0, 0, width, height);
 
         // tools
@@ -66,7 +66,7 @@ public class ToolArea extends Area {
             tool.renderY2 = y + 32;
 
             if (tab.selectedTool == tool) {
-                renderer.color(1, 1, 1, 1);
+                renderer.color(0, 0, 0, 1);
             }
 
             renderer.texRect2d(tool.getIcon(), 0, y, 32, y + 32);
