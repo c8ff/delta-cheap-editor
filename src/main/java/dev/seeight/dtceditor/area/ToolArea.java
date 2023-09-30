@@ -1,6 +1,7 @@
 package dev.seeight.dtceditor.area;
 
 import dev.seeight.dtceditor.DeltaCheapEditor;
+import dev.seeight.dtceditor.contextmenu.ListContextMenu;
 import dev.seeight.dtceditor.history.IHistoryEntry;
 import dev.seeight.dtceditor.popup.PopUp;
 import dev.seeight.dtceditor.tab.EditorTab;
@@ -21,13 +22,14 @@ public class ToolArea extends Area {
             if (tool.contains(mouse.getX(), mouse.getY())) {
                 if (button == GLFW.GLFW_MOUSE_BUTTON_1 && action == GLFW.GLFW_PRESS) {
                     tab.selectedTool = tool;
-                } else if (button == GLFW.GLFW_MOUSE_BUTTON_2 && action == GLFW.GLFW_PRESS) {
-                    PopUp pop = tab.selectedTool.getOptionsPopUp();
+                } else if (button == GLFW.GLFW_MOUSE_BUTTON_2 && action == GLFW.GLFW_RELEASE) {
+                    PopUp pop = tool.getOptionsPopUp();
                     if (pop != null) {
-                        editor.setPopUp(pop);
+                        editor.setContextMenu(new ListContextMenu((float) mouse.getX(), (float) mouse.getY(), new ListContextMenu.Entry(() -> {
+                            editor.setPopUp(pop);
+                        }, "Options")));
                     }
                 }
-                // TODO: ignore click lol
                 return true;
             }
         }

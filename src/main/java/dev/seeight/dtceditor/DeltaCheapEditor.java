@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import dev.seeight.common.lwjgl.Window;
 import dev.seeight.common.lwjgl.font.FontRenderer;
+import dev.seeight.dtceditor.contextmenu.IContextMenu;
 import dev.seeight.dtceditor.input.Mouse;
 import dev.seeight.dtceditor.mgr.TextureManager;
 import dev.seeight.dtceditor.popup.PopUp;
@@ -66,6 +67,8 @@ public class DeltaCheapEditor implements StuffListener {
 	private final List<ITab> tabs;
 	private ITab tab;
 
+	private IContextMenu contextMenu;
+
 	public DeltaCheapEditor(Window window, OpenGLRenderer2 renderer) {
 		this.mouse = new Mouse();
 		this.dirty = true;
@@ -118,6 +121,21 @@ public class DeltaCheapEditor implements StuffListener {
 	public void mouseButton(int button, int action) {
 		this.mouse.mouseButton(button, action);
 
+		if (this.contextMenu != null) {
+			if (this.contextMenu.getX() < this.mouse.getX()
+					&& this.contextMenu.getY() < this.mouse.getY()
+					&& this.contextMenu.getX() + this.contextMenu.getWidth() > this.mouse.getX()
+					&& this.contextMenu.getY() + this.contextMenu.getHeight() > this.mouse.getY()
+			) {
+				if (this.contextMenu.mouseButton(button, action, this.mouse.getXi(), this.mouse.getYi())) {
+					this.setContextMenu(null);
+				}
+			} else if (action == GLFW.GLFW_RELEASE) {
+				this.setContextMenu(null);
+			}
+			return;
+		}
+
 		if (this.popUp != null) {
 			if (!this.popUp.contains(mouse.getX(), mouse.getY())) {
 				if (button == GLFW.GLFW_MOUSE_BUTTON_1 && action == GLFW.GLFW_PRESS) {
@@ -169,9 +187,25 @@ public class DeltaCheapEditor implements StuffListener {
 		if (this.tab != null) this.tab.mouseButton(button, action);
 	}
 
+	public void setContextMenu(IContextMenu contextMenu) {
+		if (this.contextMenu != null) {
+			this.contextMenu.onClose();
+		}
+
+		this.contextMenu = contextMenu;
+
+		if (this.contextMenu != null) {
+			this.contextMenu.onOpen();
+		}
+	}
+
 	@Override
 	public void cursorPosition(double x, double y) {
 		this.mouse.cursorPosition(x, y);
+
+		if (this.contextMenu != null) {
+			return;
+		}
 
 		if (this.popUp != null && !this.popUp.isClosing()) {
 			this.popUp.cursorPosition(x, y);
@@ -288,6 +322,10 @@ public class DeltaCheapEditor implements StuffListener {
 			}
 
 			renderTabs();
+
+			if (this.contextMenu != null) {
+				this.contextMenu.render(this);
+			}
 
 			renderPopUp();
 		} catch (Exception e) {

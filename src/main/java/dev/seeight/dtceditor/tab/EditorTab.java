@@ -130,7 +130,7 @@ public class EditorTab implements ITab {
                 }
 
                 this.room.removeObjects(objects1);
-                this.room.addHistory(new DeleteObjects(this.room.getObjects(), objects1));
+                this.room.addHistory(new DeleteObjects(room, objects1));
             }
             case GLFW.GLFW_KEY_Z -> {
                 if ((mods & GLFW.GLFW_MOD_CONTROL) != 0) {

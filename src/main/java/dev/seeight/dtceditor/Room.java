@@ -8,6 +8,7 @@ import dev.seeight.renderer.renderer.Texture;
 import dev.seeight.renderer.renderer.gl.components.GLTexture;
 import dev.seeight.util.StringUtil;
 import org.apache.commons.text.StringEscapeUtils;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.*;
@@ -291,14 +292,17 @@ public class Room {
         return c;
     }
 
-    public List<RoomObject> collectSelectedObjects(Consumer<RoomObject> consumer) {
+    @NotNull
+    public List<RoomObject> collectSelectedObjects(@Nullable Consumer<RoomObject> consumer) {
         List<RoomObject> list = new ArrayList<>();
 
         for (RoomObject object : this.objects) {
             if (object.selected) {
                 try {
                     list.add(object);
-                    consumer.accept(object);
+                    if (consumer != null) {
+                        consumer.accept(object);
+                    }
                 } catch (Exception e) {
                     e.printStackTrace();
                     break;

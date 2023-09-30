@@ -21,13 +21,14 @@ public class RoomArea extends Area {
 
     @Override
     public boolean mouseButton(int button, int action) {
-        if (button == GLFW.GLFW_MOUSE_BUTTON_1) {
+        int bt = button == GLFW.GLFW_MOUSE_BUTTON_1 ? GLFW.GLFW_MOUSE_BUTTON_1 : button == GLFW.GLFW_MOUSE_BUTTON_2 ? GLFW.GLFW_MOUSE_BUTTON_2 : -1;
+        if (bt != -1) {
             boolean down = action != GLFW.GLFW_RELEASE;
 
             if (down) {
-                tab.selectedTool.click(0, mouse.getXi(), mouse.getYi());
+                tab.selectedTool.click(bt, mouse.getXi(), mouse.getYi());
             } else {
-                tab.selectedTool.lift(0, mouse.getXi(), mouse.getYi());
+                tab.selectedTool.lift(bt, mouse.getXi(), mouse.getYi());
             }
         }
 

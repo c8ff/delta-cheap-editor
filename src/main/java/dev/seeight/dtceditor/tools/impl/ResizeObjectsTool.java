@@ -1,12 +1,16 @@
 package dev.seeight.dtceditor.tools.impl;
 
+import dev.seeight.dtceditor.contextmenu.ListContextMenu;
 import dev.seeight.dtceditor.history.IHistoryEntry;
+import dev.seeight.dtceditor.history.impl.DeleteObjects;
 import dev.seeight.dtceditor.history.impl.MoveObjects;
 import dev.seeight.dtceditor.history.impl.SelectObjects;
+import dev.seeight.dtceditor.popup.PopUp;
 import dev.seeight.dtceditor.room.RoomObject;
 import dev.seeight.dtceditor.tab.EditorTab;
 import dev.seeight.dtceditor.tools.Tool;
 import dev.seeight.renderer.renderer.Texture;
+import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,13 +45,13 @@ public class ResizeObjectsTool extends Tool {
 
 	@Override
 	public void render() {
-		this.expandSize = 2 * this.tab.zoom;
+		this.expandSize = 4;
 		if (!this.click) {
 			this.calcArea();
 		}
 
 		this.tab.editor.getRenderer().color(1, 1, 1, 1);
-		this.tab.editor.getRenderer().hollowRect2d(areaX, areaY, areaX2, areaY2, this.tab.zoom);
+		this.tab.editor.getRenderer().hollowRect2d(areaX, areaY, areaX2, areaY2, 1F);
 		this.renderExpand(areaX, areaY);
 		this.renderExpand(areaX2, areaY);
 		this.renderExpand(areaX, areaY2);
@@ -61,6 +65,10 @@ public class ResizeObjectsTool extends Tool {
 
 	@Override
 	public void click(int button, int x, int y) {
+		if (button != GLFW.GLFW_MOUSE_BUTTON_1) {
+			return;
+		}
+
 		this.positionChanges.clear();
 
 		this.click = true;
@@ -109,19 +117,21 @@ public class ResizeObjectsTool extends Tool {
 			}
 
 			if (object != null) {
-				clearPreviousObjects = tab.editor.shift;
+				clearPreviousObjects = !tab.editor.shift;
 				selectedObjects.add(object);
 			} else {
 				clearPreviousObjects = true;
 				selectedObjects.clear();
 			}
 		}
-
-		System.out.println(selectionMode);
 	}
 
 	@Override
 	public void drag(int button, int x, int y) {
+		if (button != GLFW.GLFW_MOUSE_BUTTON_1) {
+			return;
+		}
+
 		x = room.snapToGrid(translateX(x));
 		y = room.snapToGrid(translateY(y));
 
@@ -156,6 +166,37 @@ public class ResizeObjectsTool extends Tool {
 
 	@Override
 	public void lift(int button, int x, int y) {
+		if (button != GLFW.GLFW_MOUSE_BUTTON_1) {
+            if (button != GLFW.GLFW_MOUSE_BUTTON_2) {
+                return;
+            }
+
+			List<RoomObject> selected = this.room.collectSelectedObjects(null);
+            if (selected.isEmpty()) {
+                return;
+            }
+
+			List<ListContextMenu.Entry> entries = new ArrayList<>();
+			if (selected.size() == 1) {
+				RoomObject first = selected.get(0);
+				entries.add(new ListContextMenu.Entry(() -> {
+					PopUp optionsPopUp = first.getOptionsPopUp(this.tab.editor, this.room);
+					if (optionsPopUp != null) {
+						this.tab.editor.setPopUp(optionsPopUp);
+					}
+				}, "Edit"));
+			}
+
+			entries.add(new ListContextMenu.Entry(() -> {
+				this.tab.room.removeObjects(selected);
+				this.tab.room.addHistory(new DeleteObjects(room, selected));
+			}, "Delete"));
+
+			this.tab.editor.setContextMenu(new ListContextMenu(x, y, entries.toArray(new ListContextMenu.Entry[0])));
+
+            return;
+		}
+
 		if (this.selectionMode < 0) {
 			this.click = false;
 			return;
@@ -275,10 +316,12 @@ public class ResizeObjectsTool extends Tool {
 	}
 
 	private void renderExpand(int x, int y) {
-		renderer.rect2d(x - expandSize, y - expandSize, x + expandSize, y + expandSize);
+		float v = expandSize;
+		renderer.rect2d(x - v, y - v, x + v, y + v);
 	}
 
 	private boolean isInsideExpand(int x, int y, int mx, int my) {
-		return mx > x - expandSize && my > y - expandSize && mx < x + expandSize && my < y + expandSize;
+		float v = expandSize;
+		return mx > x - v && my > y - v && mx < x + v && my < y + v;
 	}
 }
